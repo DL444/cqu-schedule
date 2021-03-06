@@ -1,0 +1,24 @@
+﻿@page "/add-by-subscription-complete/{username}/{subscriptionId}"
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration;
+
+<h2>你的日历订阅</h2>
+
+<p>记下这一订阅地址，将该订阅地址导入至你使用的日历服务。</p>
+<p class="text-monospace font-weight-bold">@($"{Configuration["ApiBaseAddress"]}subscription/{Username}/{SubscriptionId}")</p>
+
+<a class="btn btn-outline-dark mt-2 mb-4" href="help/subscription">导入说明</a>
+
+<h3>保守你的秘密</h3>
+<p>任何知道你的订阅地址的人都可以获得你的课程信息，请妥善保管。</p>
+<p>如果订阅地址不慎泄露，请返回此页并重新创建订阅。你将会得到一个新的订阅地址，原有的地址将失效。</p>
+
+<h3>如果需要修改密码</h3>
+<p>修改登录密码后，原有的订阅地址将失效。此时，请返回此页并重新创建订阅。</p>
+
+@code {
+    [Parameter]
+    public string Username { get; set; }
+
+    [Parameter]
+    public string SubscriptionId { get; set; }
+}

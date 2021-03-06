@@ -1,0 +1,97 @@
+﻿@page "/help/{method?}"
+@using DL444.CquSchedule.Web.Components;
+@using DL444.CquSchedule.Web.Models;
+
+<h2>使用说明</h2>
+<p>以下介绍如何在主流日历服务中使用日历订阅以及日历文件。</p>
+
+<h3>选择添加方式</h3>
+<EditForm Model="model" class="mb-4">
+    <InputSelect @bind-Value="model.AddMethod" class="form-control">
+        <option value="@AddMethod.Unspecified">...</option>
+        <option value="@AddMethod.Subscription">订阅地址</option>
+        <option value="@AddMethod.File">日历文件</option>
+    </InputSelect>
+</EditForm>
+
+@if (model.AddMethod != AddMethod.Unspecified)
+{
+    <GeneralHelp AddMethod="model.AddMethod" />
+
+    <p>请选择你使用的日历服务</p>
+    <EditForm Model="model" class="mb-4">
+        <InputSelect @bind-Value="model.ServiceType" class="form-control">
+            <option value="@CalendarServiceType.Unspecified">...</option>
+            <option value="@CalendarServiceType.Apple">iCloud</option>
+            <option value="@CalendarServiceType.Google">Google</option>
+            <option value="@CalendarServiceType.Outlook">Outlook</option>
+            <option value="@CalendarServiceType.Others">其它</option>
+        </InputSelect>
+    </EditForm>
+
+    @if (model.ServiceType != CalendarServiceType.Unspecified)
+    {
+        @if (model.AddMethod == AddMethod.Subscription)
+        {
+            <h3>导入订阅</h3>
+            switch (model.ServiceType)
+            {
+                case CalendarServiceType.Apple:
+                    <AppleSubscriptionHelp />
+                    break;
+                case CalendarServiceType.Google:
+                    <GoogleSubscriptionHelp />
+                    break;
+                case CalendarServiceType.Outlook:
+                    <OutlookSubscriptionHelp />
+                    break;
+                case CalendarServiceType.Others:
+                    <p>请在你使用的服务中找到导入选项，导入你的日历订阅。</p>
+                    break;
+            }
+        }
+        else if (model.AddMethod == AddMethod.File)
+        {
+            <h3>导入文件</h3>
+            switch (model.ServiceType)
+            {
+                case CalendarServiceType.Apple:
+                    <AppleFileHelp />
+                    break;
+                case CalendarServiceType.Google:
+                    <GoogleFileHelp />
+                    break;
+                case CalendarServiceType.Outlook:
+                    <OutlookFileHelp />
+                    break;
+                case CalendarServiceType.Others:
+                    <p>请在你使用的服务中找到导入选项，导入你的日历文件。</p>
+                    break;
+            }
+        }
+    }
+}
+
+@code {
+    [Parameter]
+    public string Method { get; set; }
+
+    protected override void OnInitialized()
+    {
+        AddMethod method = AddMethod.Unspecified;
+        if ("SUBSCRIPTION".Equals(Method, StringComparison.OrdinalIgnoreCase))
+        {
+            method = AddMethod.Subscription;
+        }
+        else if ("FILE".Equals(Method, StringComparison.OrdinalIgnoreCase))
+        {
+            method = AddMethod.File;
+        }
+        model = new HelpPageModel()
+        {
+            AddMethod = method
+        };
+    }
+
+    private HelpPageModel model;
+}

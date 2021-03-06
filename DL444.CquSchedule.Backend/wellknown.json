@@ -1,0 +1,54 @@
+{
+    "Wellknown": {
+        "Schedule": [
+            {
+                "StartOffset": "08:30:00",
+                "EndOffset": "09:15:00"
+            },
+            {
+                "StartOffset": "09:25:00",
+                "EndOffset": "10:10:00"
+            },
+            {
+                "StartOffset": "10:30:00",
+                "EndOffset": "11:15:00"
+            },
+            {
+                "StartOffset": "11:25:00",
+                "EndOffset": "12:10:00"
+            },
+            {
+                "StartOffset": "13:30:00",
+                "EndOffset": "14:15:00"
+            },
+            {
+                "StartOffset": "14:25:00",
+                "EndOffset": "15:10:00"
+            },
+            {
+                "StartOffset": "15:20:00",
+                "EndOffset": "16:05:00"
+            },
+            {
+                "StartOffset": "16:25:00",
+                "EndOffset": "17:10:00"
+            },
+            {
+                "StartOffset": "17:20:00",
+                "EndOffset": "18:05:00"
+            },
+            {
+                "StartOffset": "19:00:00",
+                "EndOffset": "19:45:00"
+            },
+            {
+                "StartOffset": "19:55:00",
+                "EndOffset": "20:40:00"
+            },
+            {
+                "StartOffset": "20:50:00",
+                "EndOffset": "21:35:00"
+            }
+        ]
+    }
+}

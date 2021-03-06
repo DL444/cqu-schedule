@@ -1,0 +1,33 @@
+﻿@inherits LayoutComponentBase
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration;
+
+<div class="page">
+    <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+        <a class="navbar-brand" href="">重大课表日历</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navBarItems">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navBarItems">
+            <ul class="navbar-nav mr-auto mr-auto mt-2 mt-sm-0">
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">添加日历</NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="delete-subscription" Match="NavLinkMatch.All">取消订阅</NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="help" Match="NavLinkMatch.All">使用说明</NavLink>
+                </li>
+            </ul>
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="@Configuration["GitHubAddress"]">GitHub</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="content px-4">
+        @Body
+    </div>
+</div>

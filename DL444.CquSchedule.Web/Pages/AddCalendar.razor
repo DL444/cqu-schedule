@@ -1,0 +1,82 @@
+﻿@page "/add-calendar/{useSubscription:bool}"
+@using DL444.CquSchedule.Models;
+@using DL444.CquSchedule.Web.Components;
+@inject ApiService ApiService;
+@inject IcsContentContainerService IcsContentContainer;
+@inject NavigationManager NavMgr;
+
+<h2>登录</h2>
+
+<SignInForm Credential="credential" Disabled="inProgress" />
+
+<p class="text-danger">@errorMessage</p>
+
+@if (UseSubscription)
+{
+    <p class="text-muted">为了提供定期更新，我们将会安全地保存你的登录信息。</p>
+}
+else
+{
+    <p class="text-muted">我们不会保存你的登录信息。</p>
+}
+
+@if (inProgress)
+{
+    <div class="spinner-border" role="status" />
+}
+else
+{
+    <button class="btn btn-outline-dark mt-2 mb-4" @onclick="SubmitAsync">确定</button>
+}
+
+@code {
+    [Parameter]
+    public bool UseSubscription { get; set; }
+
+    private async Task SubmitAsync()
+    {
+        credential.ShouldSaveCredential = UseSubscription;
+        if (string.IsNullOrWhiteSpace(credential.Username) || string.IsNullOrWhiteSpace(credential.Password))
+        {
+            errorMessage = "请提供登录信息";
+            return;
+        }
+
+        inProgress = true;
+        errorMessage = string.Empty;
+        try
+        {
+            Response<IcsSubscription> response = await ApiService.CreateSubscriptionAsync(credential);
+            if (response.Success)
+            {
+                if (UseSubscription)
+                {
+                    NavMgr.NavigateTo($"add-by-subscription-complete/{credential.Username}/{response.Data.SubscriptionId}");
+                }
+                else
+                {
+                    IcsContentContainer.IcsContent = response.Data.IcsContent;
+                    NavMgr.NavigateTo("add-by-file-complete");
+                }
+            }
+            else
+            {
+                errorMessage = response.Message;
+            }
+        }
+        catch (Exception)
+        {
+            errorMessage = "出现了一些问题，请稍后再试";
+        }
+        finally
+        {
+            inProgress = false;
+        }
+    }
+
+    private Credential credential = new Credential();
+
+    private string errorMessage = string.Empty;
+
+    private bool inProgress = false;
+}

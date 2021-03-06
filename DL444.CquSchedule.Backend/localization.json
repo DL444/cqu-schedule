@@ -1,0 +1,16 @@
+{
+    "Localization": {
+        "DefaultCulture": "zh-CN",
+        "Strings": {
+            "zh-CN": {
+                "CalendarLecturer": "教师: {0}",
+                "CredentialError": "登录信息不正确，请重试",
+                "UsernameInvalid": "学号不正确，请确认不是统一身份认证号",
+                "CaptchaRequired": "需要进行验证。请到 my.cqu.edu.cn/enroll 手动登录一次，再返回本页重试",
+                "ServiceErrorCannotCreate": "服务存在问题，暂时无法创建订阅",
+                "ServiceErrorCannotDelete": "服务存在问题，暂时无法删除订阅",
+                "UserDeleteSuccess": "订阅数据已删除"
+            }
+        }
+    }
+}

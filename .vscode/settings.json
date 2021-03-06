@@ -1,0 +1,7 @@
+{
+    "azureFunctions.deploySubpath": "DL444.CquSchedule.Backend/bin/Release/netcoreapp3.1/win-x86/publish",
+    "azureFunctions.projectLanguage": "C#",
+    "azureFunctions.projectRuntime": "~3",
+    "debug.internalConsoleOptions": "neverOpen",
+    "azureFunctions.preDeployTask": "publish"
+}
