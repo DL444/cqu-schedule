@@ -4,9 +4,8 @@
 
 <p>根据你使用的操作系统与个人偏好，选择一个合适的日历服务。</p>
 <p>下面是几种常见日历服务的支持情况。</p>
-<p>✅ 完全支持此平台</p>
-<p>➖ 不支持在此平台上添加日历订阅或文件，但可以查看在其它平台添加并同步的日历</p>
-<p>❌ 不支持此平台</p>
+<p>✅ 支持添加与查看日历</p>
+<p>➖ 不支持添加日历，但可以查看在其它平台添加并同步的日历</p>
 
 <table class="table table-hover">
     <thead>
@@ -26,32 +25,37 @@
         </tr>
         <tr>
             <th scope="row">Android</th>
-            <td>❌</td>
+            <td>➖ <sup>1</sup></td>
             <td>➖</td>
             <td>➖</td>
         </tr>
         <tr>
             <th scope="row">iOS</th>
-            <td>✅ *</td>
+            <td>✅ <sup>2</sup></td>
             <td>➖</td>
             <td>➖</td>
         </tr>
         <tr>
             <th scope="row">macOS</th>
             <td>✅</td>
-            <td>➖</td>
-            <td>➖</td>
+            <td>➖ <sup>3</sup></td>
+            <td>➖ <sup>3</sup></td>
         </tr>
         <tr>
             <th scope="row">Windows</th>
-            <td>➖</td>
-            <td>➖</td>
+            <td>➖ <sup>4</sup></td>
+            <td>➖ <sup>4</sup></td>
             <td>@(AddMethod == AddMethod.Subscription ? "➖" : "✅")</td>
         </tr>
     </tbody>
 </table>
 
-<p>* 在 iOS 上添加的 iCloud 日历不支持同步到其它平台</p>
+<p>
+    <small class="text-muted">1 通过 Google 日历 应用查看</small><br />
+    <small class="text-muted">2 在 iOS 上添加的日历无法同步到其它平台</small><br />
+    <small class="text-muted">3 通过 日历 应用查看</small><br />
+    <small class="text-muted">4 通过 Windows 日历 应用查看</small><br />
+</p>
 
 @code {
     [Parameter]
