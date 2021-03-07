@@ -17,7 +17,6 @@ namespace DL444.CquSchedule.Web
 
             builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
             string baseAddress = builder.Configuration.GetValue<string>("ApiBaseAddress");
-            // TODO: See if DI will add a ton of bytes.
             builder.Services.AddSingleton(new ApiService(new HttpClient() { BaseAddress = new Uri(baseAddress) }));
             builder.Services.AddSingleton(new IcsContentContainerService());
 
