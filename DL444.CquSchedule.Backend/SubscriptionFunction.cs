@@ -1,8 +1,8 @@
 using System;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Azure.Cosmos;
 using DL444.CquSchedule.Backend.Exceptions;
+using DL444.CquSchedule.Backend.Extensions;
 using DL444.CquSchedule.Backend.Models;
 using DL444.CquSchedule.Backend.Services;
 using DL444.CquSchedule.Models;
@@ -14,22 +14,13 @@ using Microsoft.Extensions.Logging;
 
 namespace DL444.CquSchedule.Backend
 {
-    internal class SubscriptionFunction
+    internal class SubscriptionGetFunction
     {
-        public SubscriptionFunction(
-            IDataService dataService,
-            ITermService termService,
-            IScheduleService scheduleService,
-            IStoredCredentialEncryptionService storedEncryptionService,
-            ICalendarService calendarService,
-            ILocalizationService localizationService)
+        public SubscriptionGetFunction(IDataService dataService, ITermService termService, ICalendarService calendarService)
         {
             this.dataService = dataService;
             this.termService = termService;
-            this.scheduleService = scheduleService;
-            this.storedEncryptionService = storedEncryptionService;
             this.calendarService = calendarService;
-            this.localizationService = localizationService;
         }
 
         [FunctionName("Subscription_Get")]
@@ -111,12 +102,35 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
+        private readonly IDataService dataService;
+        private readonly ITermService termService;
+        private readonly ICalendarService calendarService;
+    }
+
+    internal class SubscriptionPostFunction
+    {
+        public SubscriptionPostFunction(
+            IDataService dataService,
+            ITermService termService,
+            IScheduleService scheduleService,
+            IStoredCredentialEncryptionService storedEncryptionService,
+            ICalendarService calendarService,
+            ILocalizationService localizationService)
+        {
+            this.dataService = dataService;
+            this.termService = termService;
+            this.scheduleService = scheduleService;
+            this.storedEncryptionService = storedEncryptionService;
+            this.calendarService = calendarService;
+            this.localizationService = localizationService;
+        }
+
         [FunctionName("Subscription_Post")]
         public async Task<IActionResult> RunPostAsync(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = "subscription")] HttpRequest req,
             ILogger log)
         {
-            Credential credential = await GetCredentialAsync(req);
+            Credential credential = await req.GetCredentialAsync();
             if (credential == null)
             {
                 return new BadRequestResult();
@@ -235,12 +249,29 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
+        private readonly IDataService dataService;
+        private readonly ITermService termService;
+        private readonly IScheduleService scheduleService;
+        private readonly IStoredCredentialEncryptionService storedEncryptionService;
+        private readonly ICalendarService calendarService;
+        private readonly ILocalizationService localizationService;
+    }
+
+    internal class SubscriptionDeleteFunction
+    {
+        public SubscriptionDeleteFunction(IDataService dataService, IScheduleService scheduleService, ILocalizationService localizationService)
+        {
+            this.dataService = dataService;
+            this.scheduleService = scheduleService;
+            this.localizationService = localizationService;
+        }
+
         [FunctionName("Subscription_Delete")]
         public async Task<IActionResult> RunDeleteAsync(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = "subscription/delete")] HttpRequest req,
             ILogger log)
         {
-            Credential credential = await GetCredentialAsync(req);
+            Credential credential = await req.GetCredentialAsync();
             if (credential == null)
             {
                 return new BadRequestResult();
@@ -302,31 +333,8 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
-        private static async Task<Credential> GetCredentialAsync(HttpRequest request)
-        {
-            try
-            {
-                Credential credential = await JsonSerializer.DeserializeAsync<Credential>(request.Body, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
-                if (credential == null || string.IsNullOrWhiteSpace(credential.Username) || string.IsNullOrWhiteSpace(credential.Password))
-                {
-                    return default;
-                }
-                else
-                {
-                    return credential;
-                }
-            }
-            catch (JsonException)
-            {
-                return default;
-            }
-        }
-
         private readonly IDataService dataService;
-        private readonly ITermService termService;
         private readonly IScheduleService scheduleService;
-        private readonly IStoredCredentialEncryptionService storedEncryptionService;
-        private readonly ICalendarService calendarService;
         private readonly ILocalizationService localizationService;
     }
 }

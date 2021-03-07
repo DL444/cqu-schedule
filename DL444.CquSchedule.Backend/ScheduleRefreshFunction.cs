@@ -26,7 +26,7 @@ namespace DL444.CquSchedule.Backend
         }
 
         [FunctionName("ScheduleRefresh_Orchestrator")]
-        public async Task RunOrchestrator(
+        public async Task RunOrchestratorAsync(
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             bool termRefreshed = false;
@@ -43,7 +43,7 @@ namespace DL444.CquSchedule.Backend
         }
 
         [FunctionName("ScheduleRefresh_Activity")]
-        public async Task<bool> Refresh([ActivityTrigger] ScheduleRefreshInput input, ILogger log)
+        public async Task<bool> RefreshAsync([ActivityTrigger] ScheduleRefreshInput input, ILogger log)
         {
             (bool getUserSuccess, User user) = await GetUserAsync(input.Username, log);
             if (!getUserSuccess)
@@ -102,10 +102,9 @@ namespace DL444.CquSchedule.Backend
         }
 
         [FunctionName("ScheduleRefresh_Client")]
-        public async Task Start(
+        public async Task StartAsync(
             [TimerTrigger("0 0 18 * * *")] TimerInfo timer,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
+            [DurableClient] IDurableOrchestrationClient starter)
         {
             List<string> users = await dataService.GetUserIdsAsync();
             await starter.StartNewAsync("ScheduleRefresh_Orchestrator", null, users);
