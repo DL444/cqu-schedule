@@ -3,5 +3,6 @@
     internal class IcsContentContainerService
     {
         public string IcsContent { get; set; } = string.Empty;
+        public string PostActionMessage { get; set; }
     }
 }

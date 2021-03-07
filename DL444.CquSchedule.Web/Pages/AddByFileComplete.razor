@@ -5,6 +5,11 @@
 
 <p>保存并导入日历文件。</p>
 
+@if (!string.IsNullOrEmpty(IcsContentContainer.PostActionMessage))
+{
+    <p class="text-danger">@IcsContentContainer.PostActionMessage</p>
+}
+
 <a class="btn btn-outline-dark mt-2 mb-4" href="data:text/calendar;charset=utf-8,@Uri.EscapeDataString(IcsContentContainer.IcsContent)" download="课程.ics">
     保存
 </a>

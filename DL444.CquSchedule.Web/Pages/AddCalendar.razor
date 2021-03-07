@@ -49,6 +49,7 @@ else
             Response<IcsSubscription> response = await ApiService.CreateSubscriptionAsync(credential);
             if (response.Success)
             {
+                IcsContentContainer.PostActionMessage = response.Message;
                 if (UseSubscription)
                 {
                     NavMgr.NavigateTo($"add-by-subscription-complete/{credential.Username}/{response.Data.SubscriptionId}");
