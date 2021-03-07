@@ -13,11 +13,16 @@ namespace DL444.CquSchedule.Backend
 {
     internal class ScheduleRefreshFunction
     {
-        public ScheduleRefreshFunction(IDataService dataService, IScheduleService scheduleService, IStoredCredentialEncryptionService encryptionService)
+        public ScheduleRefreshFunction(
+            IDataService dataService,
+            IScheduleService scheduleService,
+            IStoredCredentialEncryptionService encryptionService,
+            IWellknownDataService wellknownDataService)
         {
             this.dataService = dataService;
             this.scheduleService = scheduleService;
             this.encryptionService = encryptionService;
+            this.wellknownDataService = wellknownDataService;
         }
 
         [FunctionName("ScheduleRefresh_Orchestrator")]
@@ -140,6 +145,10 @@ namespace DL444.CquSchedule.Backend
             [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
+            if (DateTimeOffset.Now > wellknownDataService.TermEndDate)
+            {
+                return;
+            }
             List<string> users = await dataService.GetUserIdsAsync();
             await starter.StartNewAsync("ScheduleRefresh_Orchestrator", null, users);
         }
@@ -147,5 +156,6 @@ namespace DL444.CquSchedule.Backend
         private readonly IDataService dataService;
         private readonly IScheduleService scheduleService;
         private readonly IStoredCredentialEncryptionService encryptionService;
+        private readonly IWellknownDataService wellknownDataService;
     }
 }
