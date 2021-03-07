@@ -7,8 +7,6 @@ namespace DL444.CquSchedule.Backend.Services
 {
     internal interface IWellknownDataService
     {
-        DateTimeOffset TermStartDate { get; }
-        DateTimeOffset TermEndDate { get; }
         IList<ScheduleTime> Schedule { get; }
     }
 
@@ -16,8 +14,6 @@ namespace DL444.CquSchedule.Backend.Services
     {
         public WellknownDataService(IConfiguration config)
         {
-            TermStartDate = DateTimeOffset.Parse(config.GetValue<string>("Term:TermStartDate"));
-            TermStartDate = DateTimeOffset.Parse(config.GetValue<string>("Term:TermEndDate"));
             List<ScheduleTime> scheduleItems = new List<ScheduleTime>();
             foreach (IConfigurationSection scheduleCfgItem in config.GetSection("Wellknown:Schedule").GetChildren())
             {
@@ -28,8 +24,6 @@ namespace DL444.CquSchedule.Backend.Services
             Schedule = scheduleItems.AsReadOnly();
         }
 
-        public DateTimeOffset TermStartDate { get; }
-        public DateTimeOffset TermEndDate { get; }
         public IList<ScheduleTime> Schedule { get; }
     }
 }

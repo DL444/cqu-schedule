@@ -18,12 +18,14 @@ namespace DL444.CquSchedule.Backend
     {
         public SubscriptionFunction(
             IDataService dataService,
+            ITermService termService,
             IScheduleService scheduleService,
             IStoredCredentialEncryptionService storedEncryptionService,
             ICalendarService calendarService,
             ILocalizationService localizationService)
         {
             this.dataService = dataService;
+            this.termService = termService;
             this.scheduleService = scheduleService;
             this.storedEncryptionService = storedEncryptionService;
             this.calendarService = calendarService;
@@ -42,6 +44,7 @@ namespace DL444.CquSchedule.Backend
                 return new BadRequestResult();
             }
 
+            Task<Term> termTask = termService.GetTermAsync();
             Task<User> userTask = dataService.GetUserAsync(username);
             Task<Schedule> scheduleTask = dataService.GetScheduleAsync(username);
             try
@@ -79,7 +82,21 @@ namespace DL444.CquSchedule.Backend
                 }
                 else
                 {
-                    return new OkObjectResult(calendarService.GetCalendar(schedule));
+                    try
+                    {
+                        Term term = await termTask;
+                        return new OkObjectResult(calendarService.GetCalendar(term, schedule));
+                    }
+                    catch (CosmosException ex)
+                    {
+                        log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.Status);
+                        return new StatusCodeResult(503);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.LogError(ex, "Failed to fetch term info.");
+                        return new StatusCodeResult(503);
+                    }
                 }
             }
             catch (CosmosException ex)
@@ -110,19 +127,46 @@ namespace DL444.CquSchedule.Backend
             }
 
             Schedule schedule;
+            Term term;
             try
             {
                 string token = await scheduleService.SignInAsync(credential.Username, credential.Password);
+                Task<Term> termTask = termService.GetTermAsync(async ts =>
+                {
+                    Term term = await scheduleService.GetTermAsync(token, TimeSpan.FromHours(8));
+                    await ts.SetTermAsync(term);
+                    return term;
+                });
                 schedule = await scheduleService.GetScheduleAsync(credential.Username, token);
+                try
+                {
+                    term = await termTask;
+                }
+                catch (CosmosException ex)
+                {
+                    log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.Status);
+                    return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                    {
+                        StatusCode = 503
+                    };
+                }
+                catch (Exception ex)
+                {
+                    log.LogError(ex, "Failed to fetch term info.");
+                    return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                    {
+                        StatusCode = 503
+                    };
+                }
             }
             catch (AuthenticationException ex)
             {
                 string message;
-                if (ex.Reason == AuthenticationFailedReason.IncorrectCredential)
+                if (ex.Result == AuthenticationResult.IncorrectCredential)
                 {
                     message = localizationService.GetString("CredentialError");
                 }
-                else if (ex.Reason == AuthenticationFailedReason.CaptchaRequired)
+                else if (ex.Result == AuthenticationResult.CaptchaRequired)
                 {
                     message = localizationService.GetString("CaptchaRequired");
                 }
@@ -147,11 +191,16 @@ namespace DL444.CquSchedule.Backend
                     StatusCode = 503
                 };
             }
-            string ics = calendarService.GetCalendar(schedule);
+
+            string ics = calendarService.GetCalendar(term, schedule);
+            int vacationServeDays = calendarService.VacationCalendarServeDays;
+            string successMessage = (DateTimeOffset.Now > term.EndDate.AddDays(vacationServeDays) || DateTimeOffset.Now < term.StartDate.AddDays(-vacationServeDays))
+                ? localizationService.GetString("OnVacationCalendarMayBeEmpty", localizationService.DefaultCulture, vacationServeDays)
+                : null;
 
             if (!credential.ShouldSaveCredential)
             {
-                return new OkObjectResult(new Response<IcsSubscription>(new IcsSubscription(null, ics)));
+                return new OkObjectResult(new Response<IcsSubscription>(true, new IcsSubscription(null, ics), successMessage));
             }
 
             User user = new User()
@@ -166,7 +215,7 @@ namespace DL444.CquSchedule.Backend
             {
                 await dataService.SetUserAsync(user);
                 await dataService.SetScheduleAsync(schedule);
-                return new OkObjectResult(new Response<IcsSubscription>(new IcsSubscription(user.SubscriptionId, null)));
+                return new OkObjectResult(new Response<IcsSubscription>(true, new IcsSubscription(user.SubscriptionId, null), successMessage));
             }
             catch (CosmosException ex)
             {
@@ -208,11 +257,11 @@ namespace DL444.CquSchedule.Backend
             catch (AuthenticationException ex)
             {
                 string message;
-                if (ex.Reason == AuthenticationFailedReason.IncorrectCredential)
+                if (ex.Result == AuthenticationResult.IncorrectCredential)
                 {
                     message = localizationService.GetString("CredentialError");
                 }
-                else if (ex.Reason == AuthenticationFailedReason.CaptchaRequired)
+                else if (ex.Result == AuthenticationResult.CaptchaRequired)
                 {
                     message = localizationService.GetString("CaptchaRequired");
                 }
@@ -253,7 +302,7 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
-        private async Task<Credential> GetCredentialAsync(HttpRequest request)
+        private static async Task<Credential> GetCredentialAsync(HttpRequest request)
         {
             try
             {
@@ -274,6 +323,7 @@ namespace DL444.CquSchedule.Backend
         }
 
         private readonly IDataService dataService;
+        private readonly ITermService termService;
         private readonly IScheduleService scheduleService;
         private readonly IStoredCredentialEncryptionService storedEncryptionService;
         private readonly ICalendarService calendarService;

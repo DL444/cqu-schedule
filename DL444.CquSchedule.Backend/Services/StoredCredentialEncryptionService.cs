@@ -31,17 +31,13 @@ namespace DL444.CquSchedule.Backend.Services
             {
                 aes.Key = key;
                 user.Iv = Convert.ToBase64String(aes.IV);
-                using (var encryptedStream = new MemoryStream())
+                using var encryptedStream = new MemoryStream();
+                using (CryptoStream cryptoStream = new CryptoStream(encryptedStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
                 {
-                    using (var cryptoStream = new CryptoStream(encryptedStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
-                    {
-                        using (var writer = new StreamWriter(cryptoStream))
-                        {
-                            await writer.WriteAsync(user.Password);
-                        }
-                    }
-                    user.Password = Convert.ToBase64String(encryptedStream.ToArray());
+                    using var writer = new StreamWriter(cryptoStream);
+                    await writer.WriteAsync(user.Password);
                 }
+                user.Password = Convert.ToBase64String(encryptedStream.ToArray());
             }
             return user;
         }
@@ -56,21 +52,15 @@ namespace DL444.CquSchedule.Backend.Services
             {
                 aes.Key = key;
                 aes.IV = Convert.FromBase64String(user.Iv);
-                using (var encryptedStream = new MemoryStream(Convert.FromBase64String(user.Password)))
-                {
-                    using (var cryptoStream = new CryptoStream(encryptedStream, aes.CreateDecryptor(), CryptoStreamMode.Read))
-                    {
-                        using (var reader = new StreamReader(cryptoStream))
-                        {
-                            user.Password = await reader.ReadToEndAsync();
-                        }
-                    }
-                }
+                using var encryptedStream = new MemoryStream(Convert.FromBase64String(user.Password));
+                using var cryptoStream = new CryptoStream(encryptedStream, aes.CreateDecryptor(), CryptoStreamMode.Read);
+                using var reader = new StreamReader(cryptoStream);
+                user.Password = await reader.ReadToEndAsync();
             }
             user.Iv = null;
             return user;
         }
 
-        private byte[] key;
+        private readonly byte[] key;
     }
 }

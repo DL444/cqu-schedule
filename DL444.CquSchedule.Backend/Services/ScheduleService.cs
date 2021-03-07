@@ -16,6 +16,7 @@ namespace DL444.CquSchedule.Backend.Services
     {
         Task<string> SignInAsync(string username, string password);
         Task<Schedule> GetScheduleAsync(string username, string token);
+        Task<Term> GetTermAsync(string token, TimeSpan offset);
     }
 
     internal class ScheduleService : IScheduleService
@@ -50,7 +51,10 @@ namespace DL444.CquSchedule.Backend.Services
             response = await SendRequestFollowingRedirectsAsync(request, cookieContainer);
             if (response.RequestMessage.RequestUri.Authority == "authserver.cqu.edu.cn")
             {
-                AuthenticationException ex = new AuthenticationException("Failed to authenticate user. Invalid credentials or captcha required.");
+                AuthenticationException ex = new AuthenticationException("Failed to authenticate user. Invalid credentials or captcha required.")
+                {
+                    Result = AuthenticationResult.UnknownFailure
+                };
                 string responseContent = await response.Content.ReadAsStringAsync();
                 Regex errorRegex = new Regex("<span id=\"msg\" class=\"login_auth_error\">(.*?)</span>");
                 Match errorMatch = errorRegex.Match(responseContent);
@@ -60,11 +64,11 @@ namespace DL444.CquSchedule.Backend.Services
                     ex.ErrorDescription = errorDescription;
                     if (errorDescription.Contains("密码", StringComparison.Ordinal) || errorDescription.Contains("password", StringComparison.Ordinal))
                     {
-                        ex.Reason = AuthenticationFailedReason.IncorrectCredential;
+                        ex.Result = AuthenticationResult.IncorrectCredential;
                     }
                     else if (errorDescription.Contains("验证码", StringComparison.Ordinal) || errorDescription.Contains("verification", StringComparison.Ordinal))
                     {
-                        ex.Reason = AuthenticationFailedReason.CaptchaRequired;
+                        ex.Result = AuthenticationResult.CaptchaRequired;
                     }
                 }
                 throw ex;
@@ -102,11 +106,14 @@ namespace DL444.CquSchedule.Backend.Services
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/enroll-api/timetable/student/{username}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
-            var responseModel = await JsonSerializer.DeserializeAsync<ResponseModel>(await response.Content.ReadAsStreamAsync());
+            var responseModel = await JsonSerializer.DeserializeAsync<ScheduleResponseModel>(await response.Content.ReadAsStreamAsync());
             Schedule schedule = new Schedule(username);
             if (!responseModel.Status.Equals("success", StringComparison.Ordinal) || responseModel.Data == null)
             {
-                return schedule;
+                throw new UpstreamRequestException("Upstream server did not return success status for schedule request.")
+                {
+                    ErrorDescription = responseModel.Message
+                };
             }
             foreach (var responseEntry in responseModel.Data)
             {
@@ -134,6 +141,26 @@ namespace DL444.CquSchedule.Backend.Services
             }
             schedule.Weeks.Sort((x, y) => x.WeekNumber.CompareTo(y.WeekNumber));
             return schedule;
+        }
+
+        public async Task<Term> GetTermAsync(string token, TimeSpan offset)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://my.cqu.edu.cn/resource-api/session/cur-timetable-session");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            HttpResponseMessage response = await httpClient.SendAsync(request);
+            var responseModel = await JsonSerializer.DeserializeAsync<TermResponseModel>(await response.Content.ReadAsStreamAsync());
+            if (!responseModel.Status.Equals("success", StringComparison.Ordinal))
+            {
+                throw new UpstreamRequestException("Upstream server did not return success status for term request.")
+                {
+                    ErrorDescription = responseModel.Message
+                };
+            }
+            return new Term()
+            {
+                StartDate = new DateTimeOffset(DateTime.Parse(responseModel.Data.StartDateString), offset),
+                EndDate = new DateTimeOffset(DateTime.Parse(responseModel.Data.EndDateString), offset).AddDays(1)
+            };
         }
 
         private async Task<HttpResponseMessage> SendRequestFollowingRedirectsAsync(HttpRequestMessage message, CookieContainer cookieContainer, int maxRedirects = 10)
@@ -205,17 +232,17 @@ namespace DL444.CquSchedule.Backend.Services
             public string Key { get; set; }
         }
 
-        private struct ResponseModel
+        private struct ScheduleResponseModel
         {
             [JsonPropertyName("status")]
             public string Status { get; set; }
             [JsonPropertyName("msg")]
             public string Message { get; set; }
             [JsonPropertyName("data")]
-            public DataEntry[] Data { get; set; }
+            public ScheduleDataEntry[] Data { get; set; }
         }
 
-        private struct DataEntry
+        private struct ScheduleDataEntry
         {
             [JsonPropertyName("courseName")]
             public string Name { get; set; }
@@ -235,6 +262,28 @@ namespace DL444.CquSchedule.Backend.Services
         {
             [JsonPropertyName("instructorName")]
             public string Lecturer { get; set; }
+        }
+
+        private struct TermResponseModel
+        {
+            [JsonPropertyName("status")]
+            public string Status { get; set; }
+            [JsonPropertyName("msg")]
+            public string Message { get; set; }
+            [JsonPropertyName("data")]
+            public TermDataModel Data { get; set; }
+        }
+
+        private struct TermDataModel
+        {
+            [JsonPropertyName("beginDate")]
+            public string StartDateString { get; set; }
+            [JsonPropertyName("endDate")]
+            public string EndDateString { get; set; }
+            [JsonPropertyName("year")]
+            public string Year { get; set; }
+            [JsonPropertyName("term")]
+            public string Term { get; set; }
         }
 
         private class CookieContainer
@@ -324,7 +373,7 @@ namespace DL444.CquSchedule.Backend.Services
             public string Domain { get; set; }
             public string Path { get; set; }
 
-            public override bool Equals(object obj) => obj is CookieDomain domain ? Equals(domain) : false;
+            public override bool Equals(object obj) => obj is CookieDomain domain && Equals(domain);
             public bool Equals(CookieDomain domain) => Domain.Equals(domain.Domain, StringComparison.Ordinal) && Path.Equals(domain.Path, StringComparison.Ordinal);
             public override int GetHashCode() => $"{Domain}-{Path}".GetHashCode();
         }

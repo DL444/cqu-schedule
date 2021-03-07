@@ -18,11 +18,11 @@ namespace DL444.CquSchedule.Backend
             var config = context.Configuration;
 
             string connection = config.GetValue<string>("Database:Connection");
-            builder.Services.AddSingleton<CosmosClient>(_ => new CosmosClient(connection));
+            builder.Services.AddSingleton(_ => new CosmosClient(connection));
             builder.Services.AddSingleton<IWellknownDataService, WellknownDataService>();
             builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
 
-            int timeout = config.GetValue<int>("Upstream:Timeout", 30);
+            int timeout = config.GetValue("Upstream:Timeout", 30);
             builder.Services.AddHttpClient<IScheduleService, ScheduleService>(x => x.Timeout = TimeSpan.FromSeconds(timeout))
                 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler()
                 {
@@ -33,6 +33,7 @@ namespace DL444.CquSchedule.Backend
             builder.Services.AddTransient<IUpstreamCredentialEncryptionService, UpstreamCredentialEncryptionService>();
             builder.Services.AddTransient<IStoredCredentialEncryptionService, StoredCredentialEncryptionService>();
             builder.Services.AddTransient<IDataService, DataService>();
+            builder.Services.AddTransient<ITermService, TermService>();
             builder.Services.AddTransient<ICalendarService, CalendarService>();
 
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);

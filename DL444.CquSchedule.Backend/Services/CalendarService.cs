@@ -4,25 +4,37 @@ using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
+using Microsoft.Extensions.Configuration;
 
 namespace DL444.CquSchedule.Backend.Services
 {
     internal interface ICalendarService
     {
-        string GetCalendar(Schedule schedule, int remindTime = 15);
+        int VacationCalendarServeDays { get; }
+
+        string GetCalendar(Term currentTerm, Schedule schedule, int remindTime = 15);
         string GetEmptyCalendar();
     }
 
     internal class CalendarService : ICalendarService
     {
-        public CalendarService(IWellknownDataService wellknown, ILocalizationService locService)
+        public CalendarService(IConfiguration config, IWellknownDataService wellknown, ILocalizationService locService)
         {
+            VacationCalendarServeDays = config.GetValue("Calendar:VacationServeDays", 3);
             this.wellknown = wellknown;
             this.locService = locService;
         }
 
-        public string GetCalendar(Schedule schedule, int remindTime)
+        public int VacationCalendarServeDays { get; }
+
+        public string GetCalendar(Term currentTerm, Schedule schedule, int remindTime)
         {
+            if (DateTimeOffset.Now > currentTerm.EndDate.AddDays(VacationCalendarServeDays)
+                || DateTimeOffset.Now < currentTerm.StartDate.AddDays(-VacationCalendarServeDays))
+            {
+                return GetEmptyCalendar();
+            }
+
             Calendar calendar = new Calendar();
             foreach (var week in schedule.Weeks)
             {
@@ -38,8 +50,8 @@ namespace DL444.CquSchedule.Backend.Services
                     CalendarEvent calEvent = new CalendarEvent()
                     {
                         Summary = entry.Name,
-                        DtStart = GetTime(week.WeekNumber, entry.DayOfWeek, startTime),
-                        DtEnd = GetTime(week.WeekNumber, entry.DayOfWeek, endTime),
+                        DtStart = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, startTime),
+                        DtEnd = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, endTime),
                         Location = entry.Room,
                         Description = entry.Lecturer == null ? null : locService.GetString("CalendarLecturer", locService.DefaultCulture, entry.Lecturer),
                         Alarms = {
@@ -58,10 +70,10 @@ namespace DL444.CquSchedule.Backend.Services
 
         public string GetEmptyCalendar() => new CalendarSerializer(new Calendar()).SerializeToString();
 
-        private CalDateTime GetTime(int week, int dayOfWeek, TimeSpan time)
+        private CalDateTime GetTime(DateTimeOffset termStartDate, int week, int dayOfWeek, TimeSpan time)
         {
             int daysSinceTermStart = (week - 1) * 7 + (dayOfWeek - 1);
-            DateTimeOffset dateTime = wellknown.TermStartDate.AddDays(daysSinceTermStart).Add(time);
+            DateTimeOffset dateTime = termStartDate.AddDays(daysSinceTermStart).Add(time);
             return new CalDateTime(dateTime.UtcDateTime);
         }
 

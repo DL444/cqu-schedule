@@ -9,7 +9,8 @@
                 "CaptchaRequired": "需要进行验证。请到 my.cqu.edu.cn/enroll 手动登录一次，再返回本页重试",
                 "ServiceErrorCannotCreate": "服务存在问题，暂时无法创建订阅",
                 "ServiceErrorCannotDelete": "服务存在问题，暂时无法删除订阅",
-                "UserDeleteSuccess": "订阅数据已删除"
+                "UserDeleteSuccess": "订阅数据已删除",
+                "OnVacationCalendarMayBeEmpty": "当前在假期中，课程可能为空或有误。新学期课程将在开学前 {0} 天左右展示"
             }
         }
     }

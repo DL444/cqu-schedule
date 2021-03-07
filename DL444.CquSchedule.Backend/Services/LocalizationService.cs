@@ -58,6 +58,6 @@ namespace DL444.CquSchedule.Backend.Services
             return string.Format(pattern, parameters);
         }
 
-        private Dictionary<string, Dictionary<string, string>> store = new Dictionary<string, Dictionary<string, string>>();
+        private readonly Dictionary<string, Dictionary<string, string>> store = new Dictionary<string, Dictionary<string, string>>();
     }
 }
