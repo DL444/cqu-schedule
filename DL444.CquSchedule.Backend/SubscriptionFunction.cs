@@ -135,6 +135,10 @@ namespace DL444.CquSchedule.Backend
             {
                 return new BadRequestResult();
             }
+            else if (credential.Username.Length > 8)
+            {
+                return new BadRequestObjectResult(new Response<object>(localizationService.GetString("UndergraduateOnly")));
+            }
             else if (!credential.Username.StartsWith("20", StringComparison.Ordinal))
             {
                 return new BadRequestObjectResult(new Response<IcsSubscription>(localizationService.GetString("UsernameInvalid")));
