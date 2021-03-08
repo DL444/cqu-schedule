@@ -128,10 +128,15 @@ namespace DL444.CquSchedule.Backend.Services
                 {
                     continue;
                 }
+                string name = responseEntry.Name;
+                if (expClassTypes.Contains(responseEntry.ClassType))
+                {
+                    name = name.Contains("实验") ? name : $"{name}实验";
+                }
                 string lecturer = responseEntry.Lecturers == null ? string.Empty : responseEntry.Lecturers.FirstOrDefault().Lecturer;
                 ScheduleEntry entry = new ScheduleEntry()
                 {
-                    Name = responseEntry.Name,
+                    Name = name,
                     Lecturer = lecturer,
                     Room = responseEntry.Room,
                     SimplifiedRoom = GetSimplifiedRoom(responseEntry.Room),
@@ -283,6 +288,8 @@ namespace DL444.CquSchedule.Backend.Services
             public string Session { get; set; }
             [JsonPropertyName("classTimetableInstrVOList")]
             public LecturerEntry[] Lecturers { get; set; }
+            [JsonPropertyName("classType")]
+            public string ClassType { get; set; }
         }
 
         private struct LecturerEntry
@@ -408,5 +415,6 @@ namespace DL444.CquSchedule.Backend.Services
         private readonly HttpClient httpClient;
         private readonly IUpstreamCredentialEncryptionService encryptionService;
         private static readonly Regex roomSimplifyRegex = new Regex("(实验室|机房).*?-(.*?)$");
+        private static readonly string[] expClassTypes = new []{ "上机" };
     }
 }
