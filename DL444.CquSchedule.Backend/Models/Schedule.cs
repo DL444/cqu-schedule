@@ -50,6 +50,7 @@ namespace DL444.CquSchedule.Backend.Models
         public string Name { get; set; }
         public string Lecturer { get; set; }
         public string Room { get; set; }
+        public string SimplifiedRoom { get; set; }
         public int DayOfWeek { get; set; }
         public int StartSession { get; set; }
         public int EndSession { get; set; }

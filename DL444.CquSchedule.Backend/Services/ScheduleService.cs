@@ -134,6 +134,7 @@ namespace DL444.CquSchedule.Backend.Services
                     Name = responseEntry.Name,
                     Lecturer = lecturer,
                     Room = responseEntry.Room,
+                    SimplifiedRoom = GetSimplifiedRoom(responseEntry.Room),
                     DayOfWeek = int.Parse(responseEntry.DayOfWeek),
                     StartSession = responseEntry.Session.IndexOf('1') + 1,
                     EndSession = responseEntry.Session.LastIndexOf('1') + 1
@@ -239,6 +240,16 @@ namespace DL444.CquSchedule.Backend.Services
                 Execution = exec,
                 Key = key
             };
+        }
+
+        private static string GetSimplifiedRoom(string room)
+        {
+            if (room == null)
+            {
+                return null;
+            }
+            Match match = roomSimplifyRegex.Match(room);
+            return match.Success ? match.Groups[2].Value : room;
         }
 
         private struct SigninInfo
@@ -396,5 +407,6 @@ namespace DL444.CquSchedule.Backend.Services
 
         private readonly HttpClient httpClient;
         private readonly IUpstreamCredentialEncryptionService encryptionService;
+        private static readonly Regex roomSimplifyRegex = new Regex("(实验室|机房).*?-(.*?)$");
     }
 }

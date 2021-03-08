@@ -52,7 +52,7 @@ namespace DL444.CquSchedule.Backend.Services
                         Summary = entry.Name,
                         DtStart = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, startTime),
                         DtEnd = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, endTime),
-                        Location = entry.Room,
+                        Location = entry.SimplifiedRoom,
                         Description = entry.Lecturer == null ? null : locService.GetString("CalendarLecturer", locService.DefaultCulture, entry.Lecturer),
                         Alarms = {
                             new Alarm()
