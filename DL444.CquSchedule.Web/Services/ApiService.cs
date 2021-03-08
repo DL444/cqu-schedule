@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -10,6 +11,19 @@ namespace DL444.CquSchedule.Web.Services
     internal class ApiService
     {
         public ApiService(HttpClient httpClient) => this.httpClient = httpClient;
+
+        public Task WarmupAsync()
+        {
+            if ((DateTimeOffset.Now - lastWarmupTime).TotalMinutes < 5)
+            {
+                return Task.CompletedTask;
+            }
+            else
+            {
+                lastWarmupTime = DateTimeOffset.Now;
+                return httpClient.GetAsync("warmup");
+            }
+        }
 
         public async Task<Response<IcsSubscription>> CreateSubscriptionAsync(Credential credential)
         {
@@ -26,5 +40,6 @@ namespace DL444.CquSchedule.Web.Services
         }
 
         private readonly HttpClient httpClient;
+        private DateTimeOffset lastWarmupTime;
     }
 }
