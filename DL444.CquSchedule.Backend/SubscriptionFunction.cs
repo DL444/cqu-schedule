@@ -187,7 +187,7 @@ namespace DL444.CquSchedule.Backend
                 else
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
-                    return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                    return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("AuthErrorCannotCreate")))
                     {
                         StatusCode = 503
                     };
@@ -299,7 +299,7 @@ namespace DL444.CquSchedule.Backend
                 else
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
-                    return new ObjectResult(new Response<object>(localizationService.GetString("ServiceErrorCannotCreate")))
+                    return new ObjectResult(new Response<object>(localizationService.GetString("AuthErrorCannotDelete")))
                     {
                         StatusCode = 503
                     };
