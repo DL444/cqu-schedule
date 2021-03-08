@@ -5,6 +5,7 @@ namespace DL444.CquSchedule.Backend.Models
         Success,
         IncorrectCredential,
         CaptchaRequired,
+        InfoRequired,
         UnknownFailure
     }
 }

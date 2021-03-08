@@ -184,6 +184,10 @@ namespace DL444.CquSchedule.Backend
                 {
                     message = localizationService.GetString("CaptchaRequired");
                 }
+                else if (ex.Result == AuthenticationResult.InfoRequired)
+                {
+                    message = localizationService.GetString("InfoRequired");
+                }
                 else
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
@@ -295,6 +299,10 @@ namespace DL444.CquSchedule.Backend
                 else if (ex.Result == AuthenticationResult.CaptchaRequired)
                 {
                     message = localizationService.GetString("CaptchaRequired");
+                }
+                else if (ex.Result == AuthenticationResult.InfoRequired)
+                {
+                    message = localizationService.GetString("InfoRequired");
                 }
                 else
                 {

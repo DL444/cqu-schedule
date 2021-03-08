@@ -139,7 +139,7 @@ namespace DL444.CquSchedule.Backend
             }
             catch (AuthenticationException ex)
             {
-                if (ex.Result != AuthenticationResult.IncorrectCredential)
+                if (ex.Result != AuthenticationResult.IncorrectCredential && ex.Result != AuthenticationResult.InfoRequired)
                 {
                     log.LogError(ex, "User authentication failed. Probably captcha required.");
                 }

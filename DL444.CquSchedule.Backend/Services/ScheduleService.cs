@@ -48,8 +48,11 @@ namespace DL444.CquSchedule.Backend.Services
                 new KeyValuePair<string, string>("rmShown", "1")
             });
             request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
-            response = await SendRequestFollowingRedirectsAsync(request, cookieContainer);
-            if (response.RequestMessage.RequestUri.Authority == "authserver.cqu.edu.cn")
+            response = await SendRequestFollowingRedirectsAsync(request, cookieContainer, new HashSet<string>() 
+            {
+                "HTTP://AUTHSERVER.CQU.EDU.CN/AUTHSERVER/IMPROVEINFO.DO" 
+            });
+            if (response.RequestMessage.RequestUri.Host == "authserver.cqu.edu.cn")
             {
                 AuthenticationException ex = new AuthenticationException("Failed to authenticate user. Invalid credentials or captcha required.")
                 {
@@ -70,6 +73,10 @@ namespace DL444.CquSchedule.Backend.Services
                     {
                         ex.Result = AuthenticationResult.CaptchaRequired;
                     }
+                }
+                else if (response.RequestMessage.RequestUri.ToString().Contains("improveInfo.do", StringComparison.OrdinalIgnoreCase))
+                {
+                    ex.Result = AuthenticationResult.InfoRequired;
                 }
                 throw ex;
             }
@@ -163,7 +170,11 @@ namespace DL444.CquSchedule.Backend.Services
             };
         }
 
-        private async Task<HttpResponseMessage> SendRequestFollowingRedirectsAsync(HttpRequestMessage message, CookieContainer cookieContainer, int maxRedirects = 10)
+        private async Task<HttpResponseMessage> SendRequestFollowingRedirectsAsync(
+            HttpRequestMessage message,
+            CookieContainer cookieContainer,
+            HashSet<string> breakoutUris = null,
+            int maxRedirects = 10)
         {
             int redirects = 0;
             HttpResponseMessage response = await httpClient.SendAsync(message);
@@ -176,7 +187,12 @@ namespace DL444.CquSchedule.Backend.Services
             }
             while (response.StatusCode == System.Net.HttpStatusCode.Redirect && redirects < maxRedirects)
             {
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, response.Headers.Location);
+                Uri location = response.Headers.Location;
+                if (breakoutUris != null && breakoutUris.Contains(location.GetLeftPart(UriPartial.Path).ToUpperInvariant()))
+                {
+                    break;
+                }
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, location);
                 request.Headers.Add("Cookie", new[] { cookieContainer.GetCookies(request.RequestUri) });
                 response = await httpClient.SendAsync(request);
                 if (response.Headers.TryGetValues("Set-Cookie", out cookies))
