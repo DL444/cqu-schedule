@@ -30,7 +30,7 @@ namespace DL444.CquSchedule.Backend.Services
         public async Task<string> SignInAsync(string username, string password)
         {
             CookieContainer cookieContainer = new CookieContainer();
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://my.cqu.edu.cn/authserver/casLogin?redirect_uri=http%3A%2F%2Fmy.cqu.edu.cn%2Fenroll%2Fcas");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://authserver.cqu.edu.cn/authserver/login?service=http://my.cqu.edu.cn/authserver/authentication/cas");
             HttpResponseMessage response = await SendRequestFollowingRedirectsAsync(request, cookieContainer);
             string body = await response.Content.ReadAsStringAsync();
             SigninInfo info = GetSigninInfo(body);
@@ -50,7 +50,8 @@ namespace DL444.CquSchedule.Backend.Services
             request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
             response = await SendRequestFollowingRedirectsAsync(request, cookieContainer, new HashSet<string>() 
             {
-                "HTTP://AUTHSERVER.CQU.EDU.CN/AUTHSERVER/IMPROVEINFO.DO" 
+                "HTTP://AUTHSERVER.CQU.EDU.CN/AUTHSERVER/IMPROVEINFO.DO",
+                "HTTP://MY.CQU.EDU.CN/"
             });
             if (response.RequestMessage.RequestUri.Host == "authserver.cqu.edu.cn")
             {
