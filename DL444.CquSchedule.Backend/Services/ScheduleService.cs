@@ -74,7 +74,7 @@ namespace DL444.CquSchedule.Backend.Services
                         ex.Result = AuthenticationResult.CaptchaRequired;
                     }
                 }
-                else if (response.RequestMessage.RequestUri.ToString().Contains("improveInfo.do", StringComparison.OrdinalIgnoreCase))
+                else if (response.Headers.Location != null && response.Headers.Location.ToString().Contains("IMPROVEINFO.DO", StringComparison.OrdinalIgnoreCase))
                 {
                     ex.Result = AuthenticationResult.InfoRequired;
                 }
