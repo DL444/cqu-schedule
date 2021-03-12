@@ -50,6 +50,7 @@ namespace DL444.CquSchedule.Backend
             {
                 return input.TermRefreshed;
             }
+            Task<(bool, Schedule)> oldFetchTask = GetOldScheduleAsync(user.Username, log);
             (AuthenticationResult authResult, string token) = await SignInAsync(user, log);
 
             bool newFetchSuccess;
@@ -84,19 +85,21 @@ namespace DL444.CquSchedule.Backend
                 newStatus = authResult == AuthenticationResult.IncorrectCredential ? RecordStatus.StaleAuthError : RecordStatus.StaleUpstreamError;
             }
 
+            (bool oldFetchSuccess, Schedule oldSchedule) = await oldFetchTask;
             if (newFetchSuccess)
             {
-                await UpdateScheduleAsync(newSchedule, log);
+                if (!oldFetchSuccess || oldSchedule.RecordStatus != RecordStatus.UpToDate || newSchedule != oldSchedule)
+                {
+                    await UpdateScheduleAsync(newSchedule, log);
+                }
             }
             else
             {
-                (bool oldFetchSuccess, Schedule oldSchedule) = await GetOldScheduleAsync(user.Username, log);
-                if (!oldFetchSuccess || oldSchedule.User == null)
+                if (oldFetchSuccess && oldSchedule.User != null)
                 {
-                    return input.TermRefreshed;
+                    oldSchedule.RecordStatus = newStatus;
+                    await UpdateScheduleAsync(oldSchedule, log);
                 }
-                oldSchedule.RecordStatus = newStatus;
-                await UpdateScheduleAsync(oldSchedule, log);
             }
             return input.TermRefreshed;
         }
