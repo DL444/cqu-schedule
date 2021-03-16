@@ -1,5 +1,4 @@
 ﻿@using DL444.CquSchedule.Models;
-@inject ApiService ApiService;
 
 <EditForm Model="Credential" autocomplete="off">
     <div class="form-group">
@@ -20,10 +19,4 @@
 
     [Parameter]
     public bool Disabled { get; set; }
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        _ = ApiService.WarmupAsync();
-    }
 }

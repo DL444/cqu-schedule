@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration;
+@inject ApiService ApiService;
 
 <div class="page">
     <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
@@ -31,3 +32,11 @@
         @Body
     </div>
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _ = ApiService.WarmupAsync();
+    }
+}
