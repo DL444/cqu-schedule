@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using Azure.Cosmos;
 using DL444.CquSchedule.Backend.Models;
-using Microsoft.Extensions.Configuration;
 
 namespace DL444.CquSchedule.Backend.Services
 {
@@ -14,12 +13,7 @@ namespace DL444.CquSchedule.Backend.Services
 
     internal class TermService : ITermService
     {
-        public TermService(CosmosClient cosmosClient, IConfiguration config)
-        {
-            string databaseName = config.GetValue<string>("Database:Database");
-            string containerName = config.GetValue<string>("Database:Container");
-            container = cosmosClient.GetContainer(databaseName, containerName);
-        }
+        public TermService(CosmosContainer container) => this.container = container;
 
         public async Task<Term> GetTermAsync(Func<ITermService, Task<Term>> onFailure)
         {

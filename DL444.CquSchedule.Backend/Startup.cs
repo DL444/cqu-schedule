@@ -14,11 +14,12 @@ namespace DL444.CquSchedule.Backend
     {
         public override void Configure(IFunctionsHostBuilder builder)
         {
-            var context = builder.GetContext();
-            var config = context.Configuration;
+            var config = builder.GetContext().Configuration;
 
             string connection = config.GetValue<string>("Database:Connection");
-            builder.Services.AddSingleton(_ => new CosmosClient(connection));
+            string database = config.GetValue<string>("Database:Database");
+            string container = config.GetValue<string>("Database:Container");
+            builder.Services.AddSingleton(_ => new CosmosClient(connection).GetContainer(database, container));
             builder.Services.AddSingleton<IWellknownDataService, WellknownDataService>();
             builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
 
@@ -41,11 +42,11 @@ namespace DL444.CquSchedule.Backend
 
         public override void ConfigureAppConfiguration(IFunctionsConfigurationBuilder builder)
         {
-            var context = builder.GetContext();
+            string rootPath = builder.GetContext().ApplicationRootPath;
             builder.ConfigurationBuilder
-                .AddJsonFile(System.IO.Path.Combine(context.ApplicationRootPath, "local.settings.json"), true)
-                .AddJsonFile(System.IO.Path.Combine(context.ApplicationRootPath, "localization.json"))
-                .AddJsonFile(System.IO.Path.Combine(context.ApplicationRootPath, "wellknown.json"))
+                .AddJsonFile(System.IO.Path.Combine(rootPath, "local.settings.json"), true)
+                .AddJsonFile(System.IO.Path.Combine(rootPath, "localization.json"))
+                .AddJsonFile(System.IO.Path.Combine(rootPath, "wellknown.json"))
                 .AddEnvironmentVariables()
                 .Build();
         }

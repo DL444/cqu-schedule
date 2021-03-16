@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Azure.Cosmos;
 using DL444.CquSchedule.Backend.Models;
-using Microsoft.Extensions.Configuration;
 
 namespace DL444.CquSchedule.Backend.Services
 {
@@ -19,12 +18,7 @@ namespace DL444.CquSchedule.Backend.Services
 
     internal class DataService : IDataService
     {
-        public DataService(CosmosClient cosmosClient, IConfiguration config)
-        {
-            string databaseName = config.GetValue<string>("Database:Database");
-            string containerName = config.GetValue<string>("Database:Container");
-            container = cosmosClient.GetContainer(databaseName, containerName);
-        }
+        public DataService(CosmosContainer container) => this.container = container;
 
         public async Task<List<string>> GetUserIdsAsync()
         {
