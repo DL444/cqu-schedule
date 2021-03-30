@@ -51,7 +51,7 @@ namespace DL444.CquSchedule.Backend.Services
                     TimeSpan endTime = wellknown.Schedule[endSession - 1].EndOffset;
 
                     descriptionBuilder.Clear();
-                    bool appendRoom = !entry.Room.Equals(entry.SimplifiedRoom, StringComparison.Ordinal);
+                    bool appendRoom = entry.Room != null && !entry.Room.Equals(entry.SimplifiedRoom, StringComparison.Ordinal);
                     bool appendLecturer = entry.Lecturer != null;
                     if (appendRoom)
                     {
