@@ -3,6 +3,7 @@
         "DefaultCulture": "zh-CN",
         "Strings": {
             "zh-CN": {
+                "CalendarRoom": "地点: {0}",
                 "CalendarLecturer": "教师: {0}",
                 "CredentialError": "登录信息不正确，请重试",
                 "UsernameInvalid": "学号不正确，请确认不是统一身份认证号",

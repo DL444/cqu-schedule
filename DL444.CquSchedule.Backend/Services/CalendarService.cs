@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using DL444.CquSchedule.Backend.Models;
 using Ical.Net;
 using Ical.Net.CalendarComponents;
@@ -36,6 +37,7 @@ namespace DL444.CquSchedule.Backend.Services
             }
 
             Calendar calendar = new Calendar();
+            StringBuilder descriptionBuilder = new StringBuilder();
             foreach (var week in schedule.Weeks)
             {
                 foreach (ScheduleEntry entry in week.Entries)
@@ -47,13 +49,30 @@ namespace DL444.CquSchedule.Backend.Services
                     TimeSpan startTime = wellknown.Schedule[entry.StartSession - 1].StartOffset;
                     int endSession = Math.Min(entry.EndSession, wellknown.Schedule.Count);
                     TimeSpan endTime = wellknown.Schedule[endSession - 1].EndOffset;
+
+                    descriptionBuilder.Clear();
+                    bool appendRoom = !entry.Room.Equals(entry.SimplifiedRoom, StringComparison.Ordinal);
+                    bool appendLecturer = entry.Lecturer != null;
+                    if (appendRoom)
+                    {
+                        descriptionBuilder.Append(locService.GetString("CalendarRoom", locService.DefaultCulture, entry.Room));
+                    }
+                    if (appendRoom && appendLecturer)
+                    {
+                        descriptionBuilder.Append("\n");
+                    }
+                    if (appendLecturer)
+                    {
+                        descriptionBuilder.Append(locService.GetString("CalendarLecturer", locService.DefaultCulture, entry.Lecturer));
+                    }
+                    
                     CalendarEvent calEvent = new CalendarEvent()
                     {
                         Summary = entry.Name,
                         DtStart = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, startTime),
                         DtEnd = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, endTime),
                         Location = entry.SimplifiedRoom,
-                        Description = entry.Lecturer == null ? null : locService.GetString("CalendarLecturer", locService.DefaultCulture, entry.Lecturer),
+                        Description = descriptionBuilder.ToString(),
                         Alarms = {
                             new Alarm()
                             {
