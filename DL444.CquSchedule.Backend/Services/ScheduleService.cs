@@ -415,7 +415,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         private readonly HttpClient httpClient;
         private readonly IUpstreamCredentialEncryptionService encryptionService;
-        private static readonly Regex roomSimplifyRegex = new Regex("(实验室|机房).*?-(.*?)$");
+        private static readonly Regex roomSimplifyRegex = new Regex("(室|机房|中心|分析系统|创新设计|展示与分析).*?-(.*?)$");
         private static readonly string[] expClassTypes = new []{ "上机" };
     }
 }
