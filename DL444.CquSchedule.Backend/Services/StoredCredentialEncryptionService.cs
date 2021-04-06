@@ -15,7 +15,7 @@ namespace DL444.CquSchedule.Backend.Services
 
     internal class KeyVaultCredentialEncryptionService : IStoredCredentialEncryptionService
     {
-        public KeyVaultCredentialEncryptionService(CryptographyClient defaultClient) => this.defaultClient = defaultClient;
+        public KeyVaultCredentialEncryptionService(ICryptographyClientContainerService clientContainerService) => this.clientContainerService = clientContainerService;
 
         public async Task<User> EncryptAsync(User user)
         {
@@ -23,10 +23,11 @@ namespace DL444.CquSchedule.Backend.Services
             {
                 throw new InvalidOperationException("KeyId is not empty. Possibly already encrypted.");
             }
+            CryptographyClient client = clientContainerService.Client;
             byte[] plaintext = Encoding.UTF8.GetBytes(user.Password);
-            EncryptResult result = await defaultClient.EncryptAsync(EncryptionAlgorithm.RsaOaep256, plaintext);
+            EncryptResult result = await client.EncryptAsync(EncryptionAlgorithm.RsaOaep256, plaintext);
             user.Password = Convert.ToBase64String(result.Ciphertext);
-            user.KeyId = defaultClient.KeyId;
+            user.KeyId = client.KeyId;
             return user;
         }
 
@@ -36,8 +37,8 @@ namespace DL444.CquSchedule.Backend.Services
             {
                 throw new InvalidOperationException("Missing KeyId in provided credential.");
             }
-            CryptographyClient client = defaultClient;
-            if (!user.KeyId.Equals(defaultClient.KeyId))
+            CryptographyClient client = clientContainerService.Client;
+            if (!user.KeyId.Equals(client.KeyId))
             {
                 client = new CryptographyClient(new Uri(user.KeyId), new DefaultAzureCredential());
             }
@@ -48,6 +49,6 @@ namespace DL444.CquSchedule.Backend.Services
             return user;
         }
 
-        private readonly CryptographyClient defaultClient;
+        private readonly ICryptographyClientContainerService clientContainerService;
     }
 }
