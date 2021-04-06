@@ -2,6 +2,9 @@ using System;
 using System.Net.Http;
 using System.Text;
 using Azure.Cosmos;
+using Azure.Identity;
+using Azure.Security.KeyVault.Keys;
+using Azure.Security.KeyVault.Keys.Cryptography;
 using DL444.CquSchedule.Backend.Services;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -19,7 +22,15 @@ namespace DL444.CquSchedule.Backend
             string connection = config.GetValue<string>("Database:Connection");
             string database = config.GetValue<string>("Database:Database");
             string container = config.GetValue<string>("Database:Container");
+            string keyVaultUri = config.GetValue<string>("Credential:KeyVault");
+            string keyName = config.GetValue<string>("Credential:KeyName");
             builder.Services.AddSingleton(_ => new CosmosClient(connection).GetContainer(database, container));
+            builder.Services.AddSingleton(x =>
+            {
+                var credential = new DefaultAzureCredential();
+                Uri latestKeyId = new KeyClient(new Uri(keyVaultUri), credential).GetKey(keyName).Value.Id;
+                return new CryptographyClient(latestKeyId, credential);
+            });
             builder.Services.AddSingleton<IWellknownDataService, WellknownDataService>();
             builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
 
@@ -32,7 +43,7 @@ namespace DL444.CquSchedule.Backend
                 });
 
             builder.Services.AddTransient<IUpstreamCredentialEncryptionService, UpstreamCredentialEncryptionService>();
-            builder.Services.AddTransient<IStoredCredentialEncryptionService, StoredCredentialEncryptionService>();
+            builder.Services.AddTransient<IStoredCredentialEncryptionService, KeyVaultCredentialEncryptionService>();
             builder.Services.AddTransient<IDataService, DataService>();
             builder.Services.AddTransient<ITermService, TermService>();
             builder.Services.AddTransient<ICalendarService, CalendarService>();

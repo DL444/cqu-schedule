@@ -9,7 +9,7 @@ namespace DL444.CquSchedule.Backend.Models
         public string PartitionKey => "User";
         public string Username { get; set; }
         public string Password { get; set; }
-        public string Iv { get; set; }
+        public string KeyId { get; set; }
         public string SubscriptionId { get; set; }
     }
 }

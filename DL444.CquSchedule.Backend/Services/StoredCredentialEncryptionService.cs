@@ -1,9 +1,9 @@
 using System;
-using System.IO;
-using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
+using Azure.Identity;
+using Azure.Security.KeyVault.Keys.Cryptography;
 using DL444.CquSchedule.Backend.Models;
-using Microsoft.Extensions.Configuration;
 
 namespace DL444.CquSchedule.Backend.Services
 {
@@ -13,54 +13,41 @@ namespace DL444.CquSchedule.Backend.Services
         Task<User> DecryptAsync(User user);
     }
 
-    internal class StoredCredentialEncryptionService : IStoredCredentialEncryptionService
+    internal class KeyVaultCredentialEncryptionService : IStoredCredentialEncryptionService
     {
-        public StoredCredentialEncryptionService(IConfiguration config)
-        {
-            string key = config.GetValue<string>("Credential:EncryptionKey");
-            this.key = Convert.FromBase64String(key);
-        }
+        public KeyVaultCredentialEncryptionService(CryptographyClient defaultClient) => this.defaultClient = defaultClient;
 
         public async Task<User> EncryptAsync(User user)
         {
-            if (user.Iv != null)
+            if (user.KeyId != null)
             {
-                throw new InvalidOperationException("IV is not empty. Possibly already encrypted.");
+                throw new InvalidOperationException("KeyId is not empty. Possibly already encrypted.");
             }
-            using (Aes aes = Aes.Create())
-            {
-                aes.Key = key;
-                user.Iv = Convert.ToBase64String(aes.IV);
-                using var encryptedStream = new MemoryStream();
-                using (CryptoStream cryptoStream = new CryptoStream(encryptedStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
-                {
-                    using var writer = new StreamWriter(cryptoStream);
-                    await writer.WriteAsync(user.Password);
-                }
-                user.Password = Convert.ToBase64String(encryptedStream.ToArray());
-            }
+            byte[] plaintext = Encoding.UTF8.GetBytes(user.Password);
+            EncryptResult result = await defaultClient.EncryptAsync(EncryptionAlgorithm.RsaOaep256, plaintext);
+            user.Password = Convert.ToBase64String(result.Ciphertext);
+            user.KeyId = defaultClient.KeyId;
             return user;
         }
 
         public async Task<User> DecryptAsync(User user)
         {
-            if (user.Iv == null)
+            if (user.KeyId == null)
             {
-                throw new ArgumentException("Missing IV in provided credential.");
+                throw new InvalidOperationException("Missing KeyId in provided credential.");
             }
-            using (Aes aes = Aes.Create())
+            CryptographyClient client = defaultClient;
+            if (!user.KeyId.Equals(defaultClient.KeyId))
             {
-                aes.Key = key;
-                aes.IV = Convert.FromBase64String(user.Iv);
-                using var encryptedStream = new MemoryStream(Convert.FromBase64String(user.Password));
-                using var cryptoStream = new CryptoStream(encryptedStream, aes.CreateDecryptor(), CryptoStreamMode.Read);
-                using var reader = new StreamReader(cryptoStream);
-                user.Password = await reader.ReadToEndAsync();
+                client = new CryptographyClient(new Uri(user.KeyId), new DefaultAzureCredential());
             }
-            user.Iv = null;
+            byte[] ciphertext = Convert.FromBase64String(user.Password);
+            DecryptResult result = await client.DecryptAsync(EncryptionAlgorithm.RsaOaep256, ciphertext);
+            user.Password = Encoding.UTF8.GetString(result.Plaintext);
+            user.KeyId = null;
             return user;
         }
 
-        private readonly byte[] key;
+        private readonly CryptographyClient defaultClient;
     }
 }
