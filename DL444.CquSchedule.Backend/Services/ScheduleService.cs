@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DL444.CquSchedule.Backend.Exceptions;
 using DL444.CquSchedule.Backend.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace DL444.CquSchedule.Backend.Services
 {
@@ -21,10 +22,11 @@ namespace DL444.CquSchedule.Backend.Services
 
     internal class ScheduleService : IScheduleService
     {
-        public ScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService)
+        public ScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService, IConfiguration config)
         {
             this.httpClient = httpClient;
             this.encryptionService = encryptionService;
+            vacationServeDays = config.GetValue("Calendar:VacationServeDays", 3);
         }
 
         public async Task<string> SignInAsync(string username, string password)
@@ -159,7 +161,47 @@ namespace DL444.CquSchedule.Backend.Services
 
         public async Task<Term> GetTermAsync(string token, TimeSpan offset)
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://my.cqu.edu.cn/resource-api/session/cur-timetable-session");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://my.cqu.edu.cn/resource-api/session/info-detail");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            HttpResponseMessage response = await httpClient.SendAsync(request);
+            var termListResponseModel = await JsonSerializer.DeserializeAsync<TermListResponseModel>(await response.Content.ReadAsStreamAsync());
+
+            (int prevHint, Term prevTerm) = await GetCandidateTermAsync(token, termListResponseModel.CurrentTerm, offset);
+            if (prevHint == 0)
+            {
+                return prevTerm;
+            }
+
+            int index = termListResponseModel.Terms.FindIndex(x => x.Id.Equals(termListResponseModel.CurrentTerm, StringComparison.Ordinal)) - prevHint;
+            while (index >= 0 && index < termListResponseModel.Terms.Count)
+            {
+                (int hint, Term term) = await GetCandidateTermAsync(token, termListResponseModel.Terms[index].Id, offset);
+                if (hint == 0)
+                {
+                    return term;
+                }
+
+                if (prevHint * hint > 0)
+                {
+                    index -= hint;
+                    prevHint = hint;
+                    prevTerm = term;
+                }
+                else if (prevHint > 0)
+                {
+                    return term;
+                }
+                else if (prevHint < 0)
+                {
+                    return prevTerm;
+                }
+            }
+            return prevTerm;
+        }
+
+        private async Task<(int hint, Term term)> GetCandidateTermAsync(string token, string termId, TimeSpan offset)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/resource-api/session/info/{termId}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
             var responseModel = await JsonSerializer.DeserializeAsync<TermResponseModel>(await response.Content.ReadAsStreamAsync());
@@ -170,11 +212,22 @@ namespace DL444.CquSchedule.Backend.Services
                     ErrorDescription = responseModel.Message
                 };
             }
-            return new Term()
+
+            Term term = new Term()
             {
                 StartDate = new DateTimeOffset(DateTime.Parse(responseModel.Data.StartDateString), offset),
                 EndDate = new DateTimeOffset(DateTime.Parse(responseModel.Data.EndDateString), offset).AddDays(1)
             };
+            int hint = 0;
+            if (DateTimeOffset.Now < term.StartDate.AddDays(-vacationServeDays))
+            {
+                hint = -1;
+            }
+            else if (DateTimeOffset.Now > term.EndDate.AddDays(vacationServeDays))
+            {
+                hint = 1;
+            }
+            return (hint, term);
         }
 
         private async Task<HttpResponseMessage> SendRequestFollowingRedirectsAsync(
@@ -315,10 +368,21 @@ namespace DL444.CquSchedule.Backend.Services
             public string StartDateString { get; set; }
             [JsonPropertyName("endDate")]
             public string EndDateString { get; set; }
-            [JsonPropertyName("year")]
-            public string Year { get; set; }
-            [JsonPropertyName("term")]
-            public string Term { get; set; }
+        }
+
+        private struct TermListResponseModel
+        {
+            [JsonPropertyName("curSessionId")]
+            public string CurrentTerm { get; set; }
+
+            [JsonPropertyName("sessionFinder")]
+            public List<TermListItemModel> Terms { get; set; }
+        }
+
+        private struct TermListItemModel
+        {
+            [JsonPropertyName("id")]
+            public string Id { get; set; }
         }
 
         private class CookieContainer
@@ -415,6 +479,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         private readonly HttpClient httpClient;
         private readonly IUpstreamCredentialEncryptionService encryptionService;
+        private readonly int vacationServeDays;
         private static readonly Regex roomSimplifyRegex = new Regex("(室|机房|中心|分析系统|创新设计|展示与分析).*?-(.*?)$");
         private static readonly string[] expClassTypes = new []{ "上机" };
     }
