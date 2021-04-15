@@ -107,9 +107,11 @@ namespace DL444.CquSchedule.Backend
         [FunctionName("ScheduleRefresh_Client")]
         public async Task StartAsync(
             [TimerTrigger("0 0 18 * * *")] TimerInfo timer,
-            [DurableClient] IDurableOrchestrationClient starter)
+            [DurableClient] IDurableOrchestrationClient starter,
+            ILogger log)
         {
             List<string> users = await dataService.GetUserIdsAsync();
+            log.LogInformation("Current active user count: {userCount}.", users.Count);
             await starter.StartNewAsync("ScheduleRefresh_Orchestrator", null, users);
         }
 
