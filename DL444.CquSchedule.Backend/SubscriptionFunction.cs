@@ -1,6 +1,6 @@
 using System;
+using System.Net;
 using System.Threading.Tasks;
-using Azure.Cosmos;
 using DL444.CquSchedule.Backend.Exceptions;
 using DL444.CquSchedule.Backend.Extensions;
 using DL444.CquSchedule.Backend.Models;
@@ -8,9 +8,11 @@ using DL444.CquSchedule.Backend.Services;
 using DL444.CquSchedule.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using User = DL444.CquSchedule.Backend.Models.User;
 
 namespace DL444.CquSchedule.Backend
 {
@@ -48,13 +50,13 @@ namespace DL444.CquSchedule.Backend
             }
             catch (CosmosException ex)
             {
-                if (ex.Status == 404)
+                if (ex.StatusCode == HttpStatusCode.NotFound)
                 {
                     return new OkObjectResult(calendarService.GetEmptyCalendar());
                 }
                 else
                 {
-                    log.LogError(ex, "Failed to fetch user info from database. Status: {status}", ex.Status);
+                    log.LogError(ex, "Failed to fetch user info from database. Status: {status}", ex.StatusCode);
                     return new StatusCodeResult(503);
                 }
             }
@@ -80,7 +82,7 @@ namespace DL444.CquSchedule.Backend
                     }
                     catch (CosmosException ex)
                     {
-                        log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.Status);
+                        log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.StatusCode);
                         return new StatusCodeResult(503);
                     }
                     catch (Exception ex)
@@ -92,7 +94,7 @@ namespace DL444.CquSchedule.Backend
             }
             catch (CosmosException ex)
             {
-                log.LogError(ex, "Failed to fetch user info from database. Status: {status}", ex.Status);
+                log.LogError(ex, "Failed to fetch user info from database. Status: {status}", ex.StatusCode);
                 return new StatusCodeResult(503);
             }
             catch (Exception ex)
@@ -137,11 +139,11 @@ namespace DL444.CquSchedule.Backend
             }
             else if (credential.Username.Length > 8)
             {
-                return new BadRequestObjectResult(new Response<object>(localizationService.GetString("UndergraduateOnly")));
+                return new BadRequestObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("UndergraduateOnly")));
             }
             else if (!credential.Username.StartsWith("20", StringComparison.Ordinal))
             {
-                return new BadRequestObjectResult(new Response<IcsSubscription>(localizationService.GetString("UsernameInvalid")));
+                return new BadRequestObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UsernameInvalid")));
             }
 
             Schedule schedule;
@@ -162,8 +164,8 @@ namespace DL444.CquSchedule.Backend
                 }
                 catch (CosmosException ex)
                 {
-                    log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.Status);
-                    return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                    log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.StatusCode);
+                    return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
                     {
                         StatusCode = 503
                     };
@@ -171,7 +173,7 @@ namespace DL444.CquSchedule.Backend
                 catch (Exception ex)
                 {
                     log.LogError(ex, "Failed to fetch term info.");
-                    return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                    return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
                     {
                         StatusCode = 503
                     };
@@ -195,12 +197,12 @@ namespace DL444.CquSchedule.Backend
                 else
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
-                    return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("AuthErrorCannotCreate")))
+                    return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("AuthErrorCannotCreate")))
                     {
                         StatusCode = 503
                     };
                 }
-                return new ObjectResult(new Response<IcsSubscription>(message))
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(message))
                 {
                     StatusCode = 401
                 };
@@ -208,7 +210,7 @@ namespace DL444.CquSchedule.Backend
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to authenticate user.");
-                return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
                 {
                     StatusCode = 503
                 };
@@ -222,7 +224,7 @@ namespace DL444.CquSchedule.Backend
 
             if (!credential.ShouldSaveCredential)
             {
-                return new OkObjectResult(new Response<IcsSubscription>(true, new IcsSubscription(null, ics), successMessage));
+                return new OkObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(null, ics), successMessage));
             }
 
             User user = new User()
@@ -237,12 +239,12 @@ namespace DL444.CquSchedule.Backend
             {
                 await dataService.SetUserAsync(user);
                 await dataService.SetScheduleAsync(schedule);
-                return new OkObjectResult(new Response<IcsSubscription>(true, new IcsSubscription(user.SubscriptionId, null), successMessage));
+                return new OkObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(user.SubscriptionId, null), successMessage));
             }
             catch (CosmosException ex)
             {
-                log.LogError(ex, "Failed to update database. Status: {status}", ex.Status);
-                return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                log.LogError(ex, "Failed to update database. Status: {status}", ex.StatusCode);
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
                 {
                     StatusCode = 503
                 };
@@ -250,7 +252,7 @@ namespace DL444.CquSchedule.Backend
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to update database.");
-                return new ObjectResult(new Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
                 {
                     StatusCode = 503
                 };
@@ -286,7 +288,7 @@ namespace DL444.CquSchedule.Backend
             }
             else if (!credential.Username.StartsWith("20", StringComparison.Ordinal))
             {
-                return new BadRequestObjectResult(new Response<object>(localizationService.GetString("UsernameInvalid")));
+                return new BadRequestObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("UsernameInvalid")));
             }
 
             try
@@ -311,12 +313,12 @@ namespace DL444.CquSchedule.Backend
                 else
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
-                    return new ObjectResult(new Response<object>(localizationService.GetString("AuthErrorCannotDelete")))
+                    return new ObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("AuthErrorCannotDelete")))
                     {
                         StatusCode = 503
                     };
                 }
-                return new ObjectResult(new Response<object>(message))
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<object>(message))
                 {
                     StatusCode = 401
                 };
@@ -324,7 +326,7 @@ namespace DL444.CquSchedule.Backend
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to authenticate user.");
-                return new ObjectResult(new Response<object>(localizationService.GetString("ServiceErrorCannotDelete")))
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("ServiceErrorCannotDelete")))
                 {
                     StatusCode = 503
                 };
@@ -333,12 +335,12 @@ namespace DL444.CquSchedule.Backend
             bool success = await dataService.DeleteUserAsync(credential.Username);
             if (success)
             {
-                return new OkObjectResult(new Response<object>(true, null, localizationService.GetString("UserDeleteSuccess")));
+                return new OkObjectResult(new DL444.CquSchedule.Models.Response<object>(true, null, localizationService.GetString("UserDeleteSuccess")));
             }
             else
             {
                 log.LogError("Failed to delete user. Username: {username}", credential.Username);
-                return new ObjectResult(new Response<object>(localizationService.GetString("ServiceErrorCannotDelete")))
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("ServiceErrorCannotDelete")))
                 {
                     StatusCode = 503
                 };

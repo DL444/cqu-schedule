@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace DL444.CquSchedule.Backend.Models
 {
@@ -14,7 +14,7 @@ namespace DL444.CquSchedule.Backend.Models
             Weeks = new List<ScheduleWeek>();
         }
 
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public string Id => $"Schedule-{User}";
         public string PartitionKey => User;
         public RecordStatus RecordStatus { get; set; }

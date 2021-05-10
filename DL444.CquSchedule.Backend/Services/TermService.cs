@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
-using Azure.Cosmos;
 using DL444.CquSchedule.Backend.Models;
+using Microsoft.Azure.Cosmos;
 
 namespace DL444.CquSchedule.Backend.Services
 {
@@ -13,7 +13,7 @@ namespace DL444.CquSchedule.Backend.Services
 
     internal class TermService : ITermService
     {
-        public TermService(CosmosContainer container) => this.container = container;
+        public TermService(Container container) => this.container = container;
 
         public async Task<Term> GetTermAsync(Func<ITermService, Task<Term>> onFailure)
         {
@@ -23,7 +23,7 @@ namespace DL444.CquSchedule.Backend.Services
                 try
                 {
                     ItemResponse<Term> response = await container.ReadItemAsync<Term>("Term", new PartitionKey("Term"));
-                    term = response.Value;
+                    term = response.Resource;
                 }
                 catch (Exception)
                 {
@@ -56,7 +56,7 @@ namespace DL444.CquSchedule.Backend.Services
             await container.UpsertItemAsync(term, new PartitionKey("Term"));
         }
 
-        private readonly CosmosContainer container;
+        private readonly Container container;
         private static readonly object cacheLock = new object();
         private static bool cached;
         private static Term cachedTerm;

@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
-using Azure.Cosmos;
 using DL444.CquSchedule.Backend.Models;
+using Microsoft.Azure.Cosmos;
+using User = DL444.CquSchedule.Backend.Models.User;
 
 namespace DL444.CquSchedule.Backend.Services
 {
@@ -18,18 +21,23 @@ namespace DL444.CquSchedule.Backend.Services
 
     internal class DataService : IDataService
     {
-        public DataService(CosmosContainer container) => this.container = container;
+        public DataService(Container container) => this.container = container;
 
         public async Task<List<string>> GetUserIdsAsync()
         {
             var users = new List<string>();
-            QueryDefinition usersQuery = new QueryDefinition("SELECT c.Username FROM c WHERE c.PartitionKey = \"User\"");
-            await foreach (UsernameHeader header in container.GetItemQueryIterator<UsernameHeader>(usersQuery, requestOptions: new QueryRequestOptions()
+            var usersQuery = new QueryDefinition("SELECT c.Username FROM c WHERE c.PartitionKey = \"User\"");
+            var requestOptions = new QueryRequestOptions()
             {
                 PartitionKey = new PartitionKey("User")
-            }))
+            };
+            using (FeedIterator<UsernameHeader> feedIterator = container.GetItemQueryIterator<UsernameHeader>(usersQuery, requestOptions: requestOptions))
             {
-                users.Add(header.Username);
+                while (feedIterator.HasMoreResults)
+                {
+                    IEnumerable<UsernameHeader> batch = await feedIterator.ReadNextAsync();
+                    users.AddRange(batch.Select(x => x.Username));
+                }
             }
             return users;
         }
@@ -53,7 +61,7 @@ namespace DL444.CquSchedule.Backend.Services
             {
                 aggregateException.Handle(ex =>
                 {
-                    if (!(ex is CosmosException cosmosEx && cosmosEx.Status == 404))
+                    if (!(ex is CosmosException cosmosEx && cosmosEx.StatusCode == HttpStatusCode.NotFound))
                     {
                         hasError = true;
                     }
@@ -62,7 +70,7 @@ namespace DL444.CquSchedule.Backend.Services
             }
             catch (CosmosException ex)
             {
-                if (ex.Status != 404)
+                if (ex.StatusCode != HttpStatusCode.NotFound)
                 {
                     hasError = true;
                 }
@@ -78,7 +86,7 @@ namespace DL444.CquSchedule.Backend.Services
         private async Task<T> GetResourceAsync<T>(string id, string partition) where T : ICosmosResource
         {
             ItemResponse<T> response = await container.ReadItemAsync<T>(id, new PartitionKey(partition));
-            return response.Value;
+            return response.Resource;
         }
         private Task SetResourceAsync<T>(T resource) where T : ICosmosResource => container.UpsertItemAsync(resource, new PartitionKey(resource.PartitionKey));
 
@@ -87,6 +95,6 @@ namespace DL444.CquSchedule.Backend.Services
             public string Username { get; set; }
         }
 
-        private readonly CosmosContainer container;
+        private readonly Container container;
     }
 }

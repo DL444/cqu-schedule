@@ -1,11 +1,11 @@
 using System;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace DL444.CquSchedule.Backend.Models
 {
     internal struct Term : ICosmosResource
     {
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public string Id => "Term";
         public string PartitionKey => "Term";
 

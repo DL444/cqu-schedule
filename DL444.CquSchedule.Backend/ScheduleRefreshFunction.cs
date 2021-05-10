@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
-using Azure.Cosmos;
 using DL444.CquSchedule.Backend.Exceptions;
 using DL444.CquSchedule.Backend.Models;
 using DL444.CquSchedule.Backend.Services;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
+using User = DL444.CquSchedule.Backend.Models.User;
 
 namespace DL444.CquSchedule.Backend
 {
@@ -125,7 +127,7 @@ namespace DL444.CquSchedule.Backend
             }
             catch (CosmosException ex)
             {
-                log.LogError(ex, "Failed to fetch user credential from database. Status: {status}", ex.Status);
+                log.LogError(ex, "Failed to fetch user credential from database. Status: {status}", ex.StatusCode);
                 return (false, default);
             }
             catch (Exception ex)
@@ -166,7 +168,7 @@ namespace DL444.CquSchedule.Backend
             }
             catch (CosmosException ex)
             {
-                log.LogError(ex, "Failed to fetch term from database. Status {status}", ex.Status);
+                log.LogError(ex, "Failed to fetch term from database. Status {status}", ex.StatusCode);
                 return (false, default);
             }
             catch (Exception ex)
@@ -185,7 +187,7 @@ namespace DL444.CquSchedule.Backend
             }
             catch (CosmosException ex)
             {
-                log.LogError(ex, "Failed to update term in database. Status {status}", ex.Status);
+                log.LogError(ex, "Failed to update term in database. Status {status}", ex.StatusCode);
                 return false;
             }
             catch (Exception ex)
@@ -218,13 +220,13 @@ namespace DL444.CquSchedule.Backend
             }
             catch (CosmosException ex)
             {
-                if (ex.Status == 404)
+                if (ex.StatusCode == HttpStatusCode.NotFound)
                 {
                     return (true, default);
                 }
                 else
                 {
-                    log.LogError(ex, "Failed to fetch resource from database. Status: {status}", ex.Status);
+                    log.LogError(ex, "Failed to fetch resource from database. Status: {status}", ex.StatusCode);
                     return (false, default);
                 }
             }
@@ -244,7 +246,7 @@ namespace DL444.CquSchedule.Backend
             }
             catch (CosmosException ex)
             {
-                log.LogError(ex, "Failed to update database. Status {statusCode}", ex.Status);
+                log.LogError(ex, "Failed to update database. Status {statusCode}", ex.StatusCode);
                 return false;
             }
             catch (Exception ex)

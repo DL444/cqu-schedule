@@ -1,11 +1,11 @@
 using System;
 using System.Net.Http;
 using System.Text;
-using Azure.Cosmos;
 using Azure.Identity;
 using Azure.Security.KeyVault.Keys;
 using Azure.Security.KeyVault.Keys.Cryptography;
 using DL444.CquSchedule.Backend.Services;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

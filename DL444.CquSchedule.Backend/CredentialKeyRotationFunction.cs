@@ -2,12 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Azure.Cosmos;
 using Azure.Identity;
 using Azure.Security.KeyVault.Keys;
 using Azure.Security.KeyVault.Keys.Cryptography;
-using DL444.CquSchedule.Backend.Models;
 using DL444.CquSchedule.Backend.Services;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.EventGrid.Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -15,6 +14,7 @@ using Microsoft.Azure.WebJobs.Extensions.EventGrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using User = DL444.CquSchedule.Backend.Models.User;
 
 namespace DL444.CquSchedule.Backend
 {
@@ -63,7 +63,7 @@ namespace DL444.CquSchedule.Backend
             }
             catch (CosmosException ex)
             {
-                log.LogError(ex, "Failed to fetch user from database. Status: {status}", ex.Status);
+                log.LogError(ex, "Failed to fetch user from database. Status: {status}", ex.StatusCode);
                 return;
             }
             catch (Exception ex)
@@ -89,7 +89,7 @@ namespace DL444.CquSchedule.Backend
             }
             catch (CosmosException ex)
             {
-                log.LogError(ex, "Failed to update user. Status: {status}", ex.Status);
+                log.LogError(ex, "Failed to update user. Status: {status}", ex.StatusCode);
                 return;
             }
             catch (Exception ex)
