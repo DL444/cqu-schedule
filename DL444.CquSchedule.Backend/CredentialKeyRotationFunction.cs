@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Azure.Identity;
 using Azure.Security.KeyVault.Keys;
@@ -14,6 +15,8 @@ using Microsoft.Azure.WebJobs.Extensions.EventGrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using Polly;
+using Polly.Contrib.WaitAndRetry;
 using User = DL444.CquSchedule.Backend.Models.User;
 
 namespace DL444.CquSchedule.Backend
@@ -32,6 +35,10 @@ namespace DL444.CquSchedule.Backend
             this.clientContainerService = clientContainerService;
             this.encryptionService = encryptionService;
             this.dataService = dataService;
+            var backoff = Backoff.DecorrelatedJitterBackoffV2(TimeSpan.FromSeconds(5), 5);
+            databaseBackoffPolicy = Policy
+                .Handle<CosmosException>(x => x.StatusCode == HttpStatusCode.TooManyRequests)
+                .WaitAndRetryAsync(backoff);
         }
 
         [FunctionName("CredentialKeyRotation")]
@@ -59,7 +66,7 @@ namespace DL444.CquSchedule.Backend
             User user;
             try
             {
-                user = await dataService.GetUserAsync(username);
+                user = await databaseBackoffPolicy.ExecuteAsync(() => dataService.GetUserAsync(username));
             }
             catch (CosmosException ex)
             {
@@ -85,7 +92,7 @@ namespace DL444.CquSchedule.Backend
 
             try
             {
-                await dataService.SetUserAsync(user);
+                await databaseBackoffPolicy.ExecuteAsync(() => dataService.SetUserAsync(user));
             }
             catch (CosmosException ex)
             {
@@ -137,5 +144,6 @@ namespace DL444.CquSchedule.Backend
         private readonly ICryptographyClientContainerService clientContainerService;
         private readonly IStoredCredentialEncryptionService encryptionService;
         private readonly IDataService dataService;
+        private readonly IAsyncPolicy databaseBackoffPolicy;
     }
 }
