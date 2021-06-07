@@ -146,38 +146,12 @@ namespace DL444.CquSchedule.Backend
                 return new BadRequestObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UsernameInvalid")));
             }
 
-            Schedule schedule;
+            string token;
             Term term;
+            Schedule schedule;
             try
             {
-                string token = await scheduleService.SignInAsync(credential.Username, credential.Password);
-                Task<Term> termTask = termService.GetTermAsync(async ts =>
-                {
-                    Term term = await scheduleService.GetTermAsync(token, TimeSpan.FromHours(8));
-                    await ts.SetTermAsync(term);
-                    return term;
-                });
-                schedule = await scheduleService.GetScheduleAsync(credential.Username, token);
-                try
-                {
-                    term = await termTask;
-                }
-                catch (CosmosException ex)
-                {
-                    log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.StatusCode);
-                    return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
-                    {
-                        StatusCode = 503
-                    };
-                }
-                catch (Exception ex)
-                {
-                    log.LogError(ex, "Failed to fetch term info.");
-                    return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
-                    {
-                        StatusCode = 503
-                    };
-                }
+                token = await scheduleService.SignInAsync(credential.Username, credential.Password);
             }
             catch (AuthenticationException ex)
             {
@@ -210,6 +184,45 @@ namespace DL444.CquSchedule.Backend
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to authenticate user.");
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                {
+                    StatusCode = 503
+                };
+            }
+
+            try
+            {
+                term = await termService.GetTermAsync(async ts =>
+                {
+                    Term term = await scheduleService.GetTermAsync(token, TimeSpan.FromHours(8));
+                    await ts.SetTermAsync(term);
+                    return term;
+                });
+            }
+            catch (CosmosException ex)
+            {
+                log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.StatusCode);
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                {
+                    StatusCode = 503
+                };
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "Failed to fetch term info.");
+                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
+                {
+                    StatusCode = 503
+                };
+            }
+
+            try
+            {
+                schedule = await scheduleService.GetScheduleAsync(credential.Username, term.SessionTermId, token);
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "Failed to fetch schedule info.");
                 return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
                 {
                     StatusCode = 503

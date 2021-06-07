@@ -31,26 +31,26 @@ namespace DL444.CquSchedule.Backend
         public async Task RunOrchestratorAsync(
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            bool termRefreshed = false;
+            string sessionTermId = default;
             var users = context.GetInput<List<string>>();
             foreach (var user in users)
             {
                 ScheduleRefreshInput input = new ScheduleRefreshInput()
                 {
                     Username = user,
-                    TermRefreshed = termRefreshed
+                    SessionTermId = sessionTermId
                 };
-                termRefreshed = await context.CallActivityAsync<bool>("ScheduleRefresh_Activity", input);
+                sessionTermId = await context.CallActivityAsync<string>("ScheduleRefresh_Activity", input);
             }
         }
 
         [FunctionName("ScheduleRefresh_Activity")]
-        public async Task<bool> RefreshAsync([ActivityTrigger] ScheduleRefreshInput input, ILogger log)
+        public async Task<string> RefreshAsync([ActivityTrigger] ScheduleRefreshInput input, ILogger log)
         {
             (bool getUserSuccess, User user) = await GetUserAsync(input.Username, log);
             if (!getUserSuccess)
             {
-                return input.TermRefreshed;
+                return input.SessionTermId;
             }
             Task<(bool, Schedule)> oldFetchTask = GetOldScheduleAsync(user.Username, log);
             (AuthenticationResult authResult, string token) = await SignInAsync(user, log);
@@ -65,7 +65,7 @@ namespace DL444.CquSchedule.Backend
                 if (getTermSuccess)
                 {
                     termUpdateTask = input.TermRefreshed ? null : UpdateTermAsync(newTerm, log);
-                    (newFetchSuccess, newSchedule) = await GetNewScheduleAsync(user.Username, token, log);
+                    (newFetchSuccess, newSchedule) = await GetNewScheduleAsync(user.Username, newTerm.SessionTermId, token, log);
                     newStatus = newFetchSuccess ? RecordStatus.UpToDate : RecordStatus.StaleUpstreamError;
                 }
                 else
@@ -77,7 +77,7 @@ namespace DL444.CquSchedule.Backend
 
                 if (termUpdateTask != null && (await termUpdateTask) == true)
                 {
-                    input.TermRefreshed = true;
+                    input.SessionTermId = newTerm.SessionTermId;
                 }
             }
             else
@@ -103,7 +103,7 @@ namespace DL444.CquSchedule.Backend
                     await UpdateScheduleAsync(oldSchedule, log);
                 }
             }
-            return input.TermRefreshed;
+            return input.SessionTermId;
         }
 
         [FunctionName("ScheduleRefresh_Client")]
@@ -197,11 +197,11 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
-        private async Task<(bool success, Schedule newSchedule)> GetNewScheduleAsync(string username, string token, ILogger log)
+        private async Task<(bool success, Schedule newSchedule)> GetNewScheduleAsync(string username, string termId, string token, ILogger log)
         {
             try
             {
-                Schedule newSchedule = await scheduleService.GetScheduleAsync(username, token);
+                Schedule newSchedule = await scheduleService.GetScheduleAsync(username, termId, token);
                 return (true, newSchedule);
             }
             catch (Exception ex)

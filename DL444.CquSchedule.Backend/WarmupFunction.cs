@@ -17,11 +17,13 @@ namespace DL444.CquSchedule.Backend
             IConfiguration config,
             IDataService dataService,
             IScheduleService scheduleService,
+            ITermService termService,
             IStoredCredentialEncryptionService storedEncryptionService) 
         {
             warmupUser = config.GetValue<string>("Warmup:User");
             this.dataService = dataService;
             this.scheduleService = scheduleService;
+            this.termService = termService;
             this.storedEncryptionService = storedEncryptionService;
         }
 
@@ -46,7 +48,13 @@ namespace DL444.CquSchedule.Backend
                     User user = await dataService.GetUserAsync(warmupUser);
                     user = await storedEncryptionService.DecryptAsync(user);
                     string token = await scheduleService.SignInAsync(user.Username, user.Password);
-                    await scheduleService.GetScheduleAsync(user.Username, token);
+                    Term term = await termService.GetTermAsync(async ts =>
+                    {
+                        Term term = await scheduleService.GetTermAsync(token, TimeSpan.FromHours(8));
+                        await ts.SetTermAsync(term);
+                        return term;
+                    });
+                    await scheduleService.GetScheduleAsync(user.Username, term.SessionTermId, token);
                 }
                 catch (Exception ex)
                 {
@@ -65,6 +73,7 @@ namespace DL444.CquSchedule.Backend
         private readonly string warmupUser;
         private readonly IDataService dataService;
         private readonly IScheduleService scheduleService;
+        private readonly ITermService termService;
         private readonly IStoredCredentialEncryptionService storedEncryptionService;
     }
 }

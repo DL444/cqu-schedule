@@ -16,7 +16,7 @@ namespace DL444.CquSchedule.Backend.Services
     internal interface IScheduleService
     {
         Task<string> SignInAsync(string username, string password);
-        Task<Schedule> GetScheduleAsync(string username, string token);
+        Task<Schedule> GetScheduleAsync(string username, string termId, string token);
         Task<Term> GetTermAsync(string token, TimeSpan offset);
     }
 
@@ -111,11 +111,20 @@ namespace DL444.CquSchedule.Backend.Services
             return tokenMatch.Groups[1].Value;
         }
 
-        public async Task<Schedule> GetScheduleAsync(string username, string token)
+        public async Task<Schedule> GetScheduleAsync(string username, string termId, string token)
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/enroll-api/timetable/student/{username}");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://my.cqu.edu.cn/enroll-api/enrollment-batch/user-switch-batch");
+            request.Content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("sessionId", termId)
+            });
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            
+            request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/enroll-api/timetable/student/{username}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            response = await httpClient.SendAsync(request);
             var responseModel = await JsonSerializer.DeserializeAsync<ScheduleResponseModel>(await response.Content.ReadAsStreamAsync());
             Schedule schedule = new Schedule(username);
             if (!responseModel.Status.Equals("success", StringComparison.Ordinal) || responseModel.Data == null)
@@ -215,6 +224,7 @@ namespace DL444.CquSchedule.Backend.Services
 
             Term term = new Term()
             {
+                SessionTermId = termId,
                 StartDate = new DateTimeOffset(DateTime.Parse(responseModel.Data.StartDateString), offset),
                 EndDate = new DateTimeOffset(DateTime.Parse(responseModel.Data.EndDateString), offset).AddDays(1)
             };

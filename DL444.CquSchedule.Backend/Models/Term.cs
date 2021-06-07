@@ -9,6 +9,7 @@ namespace DL444.CquSchedule.Backend.Models
         public string Id => "Term";
         public string PartitionKey => "Term";
 
+        public string SessionTermId { get; set; }
         public DateTimeOffset StartDate { get; set; }
         public DateTimeOffset EndDate { get; set; }
     }
