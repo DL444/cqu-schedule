@@ -38,3 +38,58 @@ a, .btn-link {
     right: 0.75rem;
     top: 0.5rem;
 }
+
+.status-description {
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.status-icon {
+    height: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+.status-icon-small {
+    height: 1rem;
+    margin-right: 0.5rem;
+}
+
+svg.status-ok {
+    fill: #28a745;
+}
+
+span.status-ok {
+    color: #28a745;
+}
+
+svg.status-info {
+    fill: #007bff;
+}
+
+span.status-info {
+    color: #007bff;
+}
+
+svg.status-warning {
+    fill: #ffc107;
+}
+
+span.status-warning {
+    color: #ffc107;
+}
+
+svg.status-error {
+    fill: #dc3545;
+}
+
+span.status-error {
+    color: #dc3545;
+}
+
+.status-incident-column {
+    margin-right: 1rem;
+}
+
+.status-incident-details {
+    max-width: 50rem;
+}
