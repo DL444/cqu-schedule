@@ -1,5 +1,4 @@
 ﻿@inherits LayoutComponentBase
-@inject Microsoft.Extensions.Configuration.IConfiguration Configuration;
 @inject ApiService ApiService;
 
 <div class="page">
@@ -25,7 +24,7 @@
                     <NavLink class="nav-link" href="status">服务状态</NavLink>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="@Configuration["GitHubAddress"]">GitHub</a>
+                    <NavLink class="nav-link" href="about">关于</NavLink>
                 </li>
             </ul>
         </div>
