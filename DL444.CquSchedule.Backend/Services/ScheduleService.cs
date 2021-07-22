@@ -113,7 +113,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         public async Task<Schedule> GetScheduleAsync(string username, string termId, string token)
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://my.cqu.edu.cn/enroll-api/enrollment-batch/user-switch-batch");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://my.cqu.edu.cn/api/enrollment/enrollment-batch/user-switch-batch");
             request.Content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("sessionId", termId)
@@ -122,7 +122,7 @@ namespace DL444.CquSchedule.Backend.Services
             HttpResponseMessage response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             
-            request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/enroll-api/timetable/student/{username}");
+            request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/api/enrollment/timetable/student/{username}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             response = await httpClient.SendAsync(request);
             var responseModel = await JsonSerializer.DeserializeAsync<ScheduleResponseModel>(await response.Content.ReadAsStreamAsync());
