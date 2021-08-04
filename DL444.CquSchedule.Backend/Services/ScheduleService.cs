@@ -170,7 +170,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         public async Task<Term> GetTermAsync(string token, TimeSpan offset)
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://my.cqu.edu.cn/resource-api/session/info-detail");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://my.cqu.edu.cn/api/resourceapi/session/info-detail");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
             var termListResponseModel = await JsonSerializer.DeserializeAsync<TermListResponseModel>(await response.Content.ReadAsStreamAsync());
@@ -210,7 +210,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         private async Task<(int hint, Term term)> GetCandidateTermAsync(string token, string termId, TimeSpan offset)
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/resource-api/session/info/{termId}");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/api/resourceapi/session/info/{termId}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
             var responseModel = await JsonSerializer.DeserializeAsync<TermResponseModel>(await response.Content.ReadAsStreamAsync());
