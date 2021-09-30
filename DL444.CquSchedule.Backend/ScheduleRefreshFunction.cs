@@ -109,7 +109,7 @@ namespace DL444.CquSchedule.Backend
 
         [FunctionName("ScheduleRefresh_Client")]
         public async Task StartAsync(
-            [TimerTrigger("0 0 18 * * *")] TimerInfo timer,
+            [TimerTrigger("0 0 8 * * *")] TimerInfo timer,
             [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
