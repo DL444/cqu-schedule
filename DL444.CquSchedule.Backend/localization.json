@@ -14,6 +14,7 @@
                 "ServiceErrorCannotDelete": "服务存在问题，暂时无法删除订阅",
                 "AuthErrorCannotCreate": "登录失败，暂时无法创建订阅。你可以尝试在 my.cqu.edu.cn/enroll 手动登录并检查帐户状态",
                 "AuthErrorCannotDelete": "登录失败，暂时无法删除订阅。你可以尝试在 my.cqu.edu.cn/enroll 手动登录并检查帐户状态",
+                "ServerDeniedConnection": "服务暂时无法登录到教务系统，建议你稍后在白天重试。你可以在手机流量等非校园网环境中登录 my.cqu.edu.cn/enroll 确认教务系统状态",
                 "UserDeleteSuccess": "订阅数据已删除",
                 "OnVacationCalendarMayBeEmpty": "当前在假期中，课程可能为空或有误。新学期课程将在开学前 {0} 天左右展示",
                 "ServiceErrorCannotGetStatus": "服务存在问题，暂时无法获取状态信息"

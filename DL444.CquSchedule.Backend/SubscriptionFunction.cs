@@ -1,5 +1,6 @@
 using System;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using DL444.CquSchedule.Backend.Exceptions;
 using DL444.CquSchedule.Backend.Extensions;
@@ -168,6 +169,10 @@ namespace DL444.CquSchedule.Backend
                 {
                     message = localizationService.GetString("InfoRequired");
                 }
+                else if (ex.InnerException is SocketException)
+                {
+                    message = localizationService.GetString("ServerDeniedConnection");
+                }
                 else
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
@@ -322,6 +327,10 @@ namespace DL444.CquSchedule.Backend
                 else if (ex.Result == AuthenticationResult.InfoRequired)
                 {
                     message = localizationService.GetString("InfoRequired");
+                }
+                else if (ex.InnerException is SocketException)
+                {
+                    message = localizationService.GetString("ServerDeniedConnection");
                 }
                 else
                 {

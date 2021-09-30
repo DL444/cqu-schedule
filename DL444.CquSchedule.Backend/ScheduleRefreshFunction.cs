@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using DL444.CquSchedule.Backend.Exceptions;
 using DL444.CquSchedule.Backend.Models;
@@ -146,7 +147,10 @@ namespace DL444.CquSchedule.Backend
             }
             catch (AuthenticationException ex)
             {
-                if (ex.Result != AuthenticationResult.IncorrectCredential && ex.Result != AuthenticationResult.InfoRequired)
+                if (ex.InnerException is SocketException) {
+                    log.LogError(ex, "User authentication failed. Server closed connection.");
+                }
+                else if (ex.Result != AuthenticationResult.IncorrectCredential && ex.Result != AuthenticationResult.InfoRequired)
                 {
                     log.LogError(ex, "User authentication failed. Probably captcha required.");
                 }

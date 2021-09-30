@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -50,11 +51,24 @@ namespace DL444.CquSchedule.Backend.Services
                 new KeyValuePair<string, string>("rmShown", "1")
             });
             request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
-            response = await SendRequestFollowingRedirectsAsync(request, cookieContainer, new HashSet<string>() 
+
+            try
             {
-                "HTTP://AUTHSERVER.CQU.EDU.CN/AUTHSERVER/IMPROVEINFO.DO",
-                "HTTP://MY.CQU.EDU.CN/"
-            });
+                response = await SendRequestFollowingRedirectsAsync(request, cookieContainer, new HashSet<string>()
+                {
+                    "HTTP://AUTHSERVER.CQU.EDU.CN/AUTHSERVER/IMPROVEINFO.DO",
+                    "HTTP://MY.CQU.EDU.CN/"
+                });
+            }
+            catch (SocketException ex)
+            {
+                AuthenticationException authEx = new AuthenticationException("Failed to authenticate user. Server closed connection.", ex)
+                {
+                    Result = AuthenticationResult.UnknownFailure,
+                };
+                throw authEx;
+            }
+
             if (response.RequestMessage.RequestUri.Host == "authserver.cqu.edu.cn")
             {
                 AuthenticationException ex = new AuthenticationException("Failed to authenticate user. Invalid credentials or captcha required.")
