@@ -10,6 +10,8 @@ namespace DL444.CquSchedule.Backend.Models
         public string Username { get; set; }
         public string Password { get; set; }
         public string KeyId { get; set; }
+        public string LastRotatedPassword { get; set; }
+        public string LastRotatedKeyId { get; set; }
         public string SubscriptionId { get; set; }
     }
 }

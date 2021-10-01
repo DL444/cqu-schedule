@@ -81,6 +81,8 @@ namespace DL444.CquSchedule.Backend
 
             try
             {
+                user.LastRotatedPassword = user.Password;
+                user.LastRotatedKeyId = user.KeyId;
                 user = await encryptionService.DecryptAsync(user);
                 user = await encryptionService.EncryptAsync(user);
             }
