@@ -57,7 +57,8 @@ namespace DL444.CquSchedule.Backend.Services
                 response = await SendRequestFollowingRedirectsAsync(request, cookieContainer, new HashSet<string>()
                 {
                     "HTTP://AUTHSERVER.CQU.EDU.CN/AUTHSERVER/IMPROVEINFO.DO",
-                    "HTTP://MY.CQU.EDU.CN/"
+                    "HTTP://MY.CQU.EDU.CN/",
+                    "HTTPS://MY.CQU.EDU.CN/"
                 });
             }
             catch (SocketException ex)
@@ -98,19 +99,19 @@ namespace DL444.CquSchedule.Backend.Services
                 throw ex;
             }
 
-            request = new HttpRequestMessage(HttpMethod.Get, "http://my.cqu.edu.cn/authserver/oauth/authorize?client_id=enroll-prod&response_type=code&scope=all&state=&redirect_uri=http%3A%2F%2Fmy.cqu.edu.cn%2Fenroll%2Ftoken-index");
+            request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/authserver/oauth/authorize?client_id=enroll-prod&response_type=code&scope=all&state=&redirect_uri=https%3A%2F%2Fmy.cqu.edu.cn%2Fenroll%2Ftoken-index");
             request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
             response = await SendRequestFollowingRedirectsAsync(request, cookieContainer);
             Regex regex = new Regex("code=(.{6})");
             string code = regex.Match(response.RequestMessage.RequestUri.ToString()).Groups[1].Value;
 
-            request = new HttpRequestMessage(HttpMethod.Post, "http://my.cqu.edu.cn/authserver/oauth/token");
+            request = new HttpRequestMessage(HttpMethod.Post, "https://my.cqu.edu.cn/authserver/oauth/token");
             request.Content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("client_id", "enroll-prod"),
                 new KeyValuePair<string, string>("client_secret", "app-a-1234"),
                 new KeyValuePair<string, string>("code", code),
-                new KeyValuePair<string, string>("redirect_uri", "http://my.cqu.edu.cn/enroll/token-index"),
+                new KeyValuePair<string, string>("redirect_uri", "https://my.cqu.edu.cn/enroll/token-index"),
                 new KeyValuePair<string, string>("grant_type", "authorization_code")
             });
             request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
@@ -127,7 +128,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         public async Task<Schedule> GetScheduleAsync(string username, string termId, string token)
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://my.cqu.edu.cn/api/enrollment/enrollment-batch/user-switch-batch");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "https://my.cqu.edu.cn/api/enrollment/enrollment-batch/user-switch-batch");
             request.Content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("sessionId", termId)
@@ -136,7 +137,7 @@ namespace DL444.CquSchedule.Backend.Services
             HttpResponseMessage response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             
-            request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/api/enrollment/timetable/student/{username}");
+            request = new HttpRequestMessage(HttpMethod.Get, $"https://my.cqu.edu.cn/api/enrollment/timetable/student/{username}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             response = await httpClient.SendAsync(request);
             var responseModel = await JsonSerializer.DeserializeAsync<ScheduleResponseModel>(await response.Content.ReadAsStreamAsync());
@@ -184,7 +185,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         public async Task<Term> GetTermAsync(string token, TimeSpan offset)
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://my.cqu.edu.cn/api/resourceapi/session/info-detail");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/api/resourceapi/session/info-detail");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
             var termListResponseModel = await JsonSerializer.DeserializeAsync<TermListResponseModel>(await response.Content.ReadAsStreamAsync());
@@ -224,7 +225,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         private async Task<(int hint, Term term)> GetCandidateTermAsync(string token, string termId, TimeSpan offset)
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"http://my.cqu.edu.cn/api/resourceapi/session/info/{termId}");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"https://my.cqu.edu.cn/api/resourceapi/session/info/{termId}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
             var responseModel = await JsonSerializer.DeserializeAsync<TermResponseModel>(await response.Content.ReadAsStreamAsync());
@@ -269,7 +270,7 @@ namespace DL444.CquSchedule.Backend.Services
                     cookieContainer.SetCookie(cookie, response.RequestMessage.RequestUri);
                 }
             }
-            while (response.StatusCode == System.Net.HttpStatusCode.Redirect && redirects < maxRedirects)
+            while ((response.StatusCode == System.Net.HttpStatusCode.Redirect || response.StatusCode == System.Net.HttpStatusCode.Moved) && redirects < maxRedirects)
             {
                 Uri location = response.Headers.Location;
                 if (breakoutUris != null && breakoutUris.Contains(location.GetLeftPart(UriPartial.Path).ToUpperInvariant()))
