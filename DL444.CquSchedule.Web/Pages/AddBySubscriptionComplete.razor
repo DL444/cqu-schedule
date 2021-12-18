@@ -4,8 +4,14 @@
 
 <h2>你的日历订阅</h2>
 
-<p>记下这一订阅地址，将该订阅地址导入至你使用的日历服务。</p>
+<p>将这一订阅地址复制下来，将该订阅地址导入至你使用的日历服务。</p>
 <p class="text-monospace font-weight-bold">@($"{Configuration["ApiBaseAddress"]}subscription/{Username}/{SubscriptionId}")</p>
+
+<br />
+<p>或者，使用下面的两个订阅地址，可以分别得到仅包含课程安排与考试安排的日历。</p>
+<p>这样，你便可以在你使用的日历服务中，为两种日程指定不同的颜色。</p>
+<p class="text-monospace">@($"{Configuration["ApiBaseAddress"]}")<b>course</b>@($"/{Username}/{SubscriptionId}")</p>
+<p class="text-monospace">@($"{Configuration["ApiBaseAddress"]}")<b>exam</b>@($"/{Username}/{SubscriptionId}")</p>
 
 @if (!string.IsNullOrEmpty(IcsContentContainer.PostActionMessage))
 {
@@ -15,7 +21,7 @@
 <a class="btn btn-outline-dark mt-2 mb-4" href="help/subscription">导入说明</a>
 
 <h3>保守你的秘密</h3>
-<p>任何知道你的订阅地址的人都可以获得你的课程信息，请妥善保管。</p>
+<p>任何知道你的订阅地址的人都可以获得你的课程信息与考试安排，请妥善保管。</p>
 <p>如果订阅地址不慎泄露，请返回此页并重新创建订阅。你将会得到一个新的订阅地址，原有的地址将失效。</p>
 
 <h3>如果需要修改密码</h3>
