@@ -27,11 +27,30 @@ namespace DL444.CquSchedule.Backend
         }
 
         [FunctionName("Subscription_Get")]
-        public async Task<IActionResult> RunGetAsync(
+        public Task<IActionResult> RunGetAsync(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "subscription/{username}/{subscriptionId}")] HttpRequest req,
             string username,
             string subscriptionId,
             ILogger log)
+            => GetScheduleAsync(username, subscriptionId, CalenderEventCategories.All, log);
+
+        [FunctionName("Course_Get")]
+        public Task<IActionResult> RunGetCoursesAsync(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "course/{username}/{subscriptionId}")] HttpRequest req,
+            string username,
+            string subscriptionId,
+            ILogger log)
+            => GetScheduleAsync(username, subscriptionId, CalenderEventCategories.Courses, log);
+
+        [FunctionName("Exam_Get")]
+        public Task<IActionResult> RunGetExamsAsync(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "exam/{username}/{subscriptionId}")] HttpRequest req,
+            string username,
+            string subscriptionId,
+            ILogger log)
+            => GetScheduleAsync(username, subscriptionId, CalenderEventCategories.Exams, log);
+
+        private async Task<IActionResult> GetScheduleAsync(string username, string subscriptionId, CalenderEventCategories eventCategories, ILogger log)
         {
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(subscriptionId))
             {
@@ -79,7 +98,7 @@ namespace DL444.CquSchedule.Backend
                     try
                     {
                         Term term = await termTask;
-                        return new OkObjectResult(calendarService.GetCalendar(term, schedule));
+                        return new OkObjectResult(calendarService.GetCalendar(term, schedule, eventCategories));
                     }
                     catch (CosmosException ex)
                     {

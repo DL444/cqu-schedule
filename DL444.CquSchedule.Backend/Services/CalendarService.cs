@@ -9,11 +9,20 @@ using Microsoft.Extensions.Configuration;
 
 namespace DL444.CquSchedule.Backend.Services
 {
+    [Flags]
+    public enum CalenderEventCategories
+    {
+        None = 0,
+        Courses = 1 << 0,
+        Exams = 1 << 1,
+        All = int.MaxValue
+    }
+
     internal interface ICalendarService
     {
         int VacationCalendarServeDays { get; }
 
-        string GetCalendar(Term currentTerm, Schedule schedule, int remindTime = 15);
+        string GetCalendar(Term currentTerm, Schedule schedule, CalenderEventCategories eventCategories = CalenderEventCategories.All, int remindTime = 15);
         string GetEmptyCalendar();
     }
 
@@ -28,7 +37,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         public int VacationCalendarServeDays { get; }
 
-        public string GetCalendar(Term currentTerm, Schedule schedule, int remindTime)
+        public string GetCalendar(Term currentTerm, Schedule schedule, CalenderEventCategories eventCategories, int remindTime)
         {
             if (DateTimeOffset.Now > currentTerm.EndDate.AddDays(VacationCalendarServeDays)
                 || DateTimeOffset.Now < currentTerm.StartDate.AddDays(-VacationCalendarServeDays))
@@ -38,21 +47,27 @@ namespace DL444.CquSchedule.Backend.Services
 
             Calendar calendar = new Calendar();
             StringBuilder descriptionBuilder = new StringBuilder();
-            foreach (var week in schedule.Weeks)
+            if (eventCategories.HasFlag(CalenderEventCategories.Courses))
             {
-                foreach (ScheduleEntry entry in week.Entries)
+                foreach (var week in schedule.Weeks)
                 {
-                    if (entry.StartSession > wellknown.Schedule.Count)
+                    foreach (ScheduleEntry entry in week.Entries)
                     {
-                        continue;
+                        if (entry.StartSession > wellknown.Schedule.Count)
+                        {
+                            continue;
+                        }
+                        calendar.Events.Add(GetCalendarEvent(entry, currentTerm, week, remindTime, descriptionBuilder));
                     }
-                    calendar.Events.Add(GetCalendarEvent(entry, currentTerm, week, remindTime, descriptionBuilder));
                 }
             }
 
-            foreach (var exam in schedule.Exams)
+            if (eventCategories.HasFlag(CalenderEventCategories.Exams))
             {
-                calendar.Events.Add(GetCalendarEvent(exam, remindTime));
+                foreach (var exam in schedule.Exams)
+                {
+                    calendar.Events.Add(GetCalendarEvent(exam, remindTime));
+                }
             }
 
             return new CalendarSerializer(calendar).SerializeToString();
