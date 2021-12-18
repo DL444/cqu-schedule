@@ -49,6 +49,7 @@ namespace DL444.CquSchedule.Backend
 
             builder.Services.AddTransient<IUpstreamCredentialEncryptionService, UpstreamCredentialEncryptionService>();
             builder.Services.AddTransient<IStoredCredentialEncryptionService, KeyVaultCredentialEncryptionService>();
+            builder.Services.AddTransient<IExamStudentIdService, ExamStudentIdService>();
             builder.Services.AddTransient<IDataService, DataService>();
             builder.Services.AddTransient<ITermService, TermService>();
             builder.Services.AddTransient<ICalendarService, CalendarService>();

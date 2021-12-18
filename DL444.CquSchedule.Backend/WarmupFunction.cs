@@ -54,7 +54,7 @@ namespace DL444.CquSchedule.Backend
                         await ts.SetTermAsync(term);
                         return term;
                     });
-                    await scheduleService.GetScheduleAsync(user.Username, term.SessionTermId, token);
+                    await scheduleService.GetScheduleAsync(user.Username, term.SessionTermId, token, TimeSpan.FromHours(8));
                 }
                 catch (Exception ex)
                 {

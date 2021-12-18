@@ -223,7 +223,7 @@ namespace DL444.CquSchedule.Backend
 
             try
             {
-                schedule = await scheduleService.GetScheduleAsync(credential.Username, term.SessionTermId, token);
+                schedule = await scheduleService.GetScheduleAsync(credential.Username, term.SessionTermId, token, TimeSpan.FromHours(8));
             }
             catch (Exception ex)
             {

@@ -12,6 +12,7 @@ namespace DL444.CquSchedule.Backend.Models
             User = user;
             RecordStatus = RecordStatus.UpToDate;
             Weeks = new List<ScheduleWeek>();
+            Exams = new List<ExamEntry>();
         }
 
         [JsonProperty("id")]
@@ -21,6 +22,7 @@ namespace DL444.CquSchedule.Backend.Models
 
         public string User { get; set; }
         public List<ScheduleWeek> Weeks { get; set; }
+        public List<ExamEntry> Exams { get; set; }
 
         public void AddEntry(int week, ScheduleEntry entry)
         {
@@ -35,19 +37,36 @@ namespace DL444.CquSchedule.Backend.Models
 
         public bool Equals(Schedule other)
         {
-            if (!string.Equals(User, other.User, StringComparison.Ordinal) || (Weeks == null) ^ (other.Weeks == null) || Weeks.Count != other.Weeks.Count)
+            if (!string.Equals(User, other.User, StringComparison.Ordinal))
             {
                 return false;
             }
-            if (Weeks == null)
+            if ((Weeks == null) ^ (other.Weeks == null) || Weeks.Count != other.Weeks.Count)
             {
-                return true;
+                return false;
             }
-            for (int i = 0; i < Weeks.Count; i++)
+            if ((Exams == null) ^ (other.Exams == null) || Exams.Count != other.Exams.Count)
             {
-                if (Weeks[i] != other.Weeks[i])
+                return false;
+            }
+            if (Weeks != null)
+            {
+                for (int i = 0; i < Weeks.Count; i++)
                 {
-                    return false;
+                    if (Weeks[i] != other.Weeks[i])
+                    {
+                        return false;
+                    }
+                }
+            }
+            if (Exams != null)
+            {
+                for (int i = 0; i < Exams.Count; i++)
+                {
+                    if (Exams[i] != other.Exams[i])
+                    {
+                        return false;
+                    }
                 }
             }
             return true;
@@ -117,5 +136,30 @@ namespace DL444.CquSchedule.Backend.Models
 
         public static bool operator == (ScheduleEntry l, ScheduleEntry r) => l.Equals(r);
         public static bool operator != (ScheduleEntry l, ScheduleEntry r) => !(l == r);
+    }
+
+    public struct ExamEntry : IEquatable<ExamEntry>
+    {
+        public string Name { get; set; }
+        public string Room { get; set; }
+        public string SimplifiedRoom { get; set; }
+        public int Seat { get; set; }
+        public DateTimeOffset StartTime { get; set; }
+        public DateTimeOffset EndTime { get; set; }
+
+        public bool Equals(ExamEntry other) =>
+            string.Equals(Name, other.Name, StringComparison.Ordinal)
+                && StartTime == other.StartTime
+                && EndTime == other.EndTime
+                && Seat == other.Seat
+                && string.Equals(Room, other.Room, StringComparison.Ordinal)
+                && string.Equals(SimplifiedRoom, other.SimplifiedRoom, StringComparison.Ordinal);
+
+        public override bool Equals(object obj) => obj is ExamEntry other ? Equals(other) : false;
+
+        public override int GetHashCode() => HashCode.Combine(Name, Room, SimplifiedRoom, Seat, StartTime, EndTime);
+
+        public static bool operator == (ExamEntry l, ExamEntry r) => l.Equals(r);
+        public static bool operator != (ExamEntry l, ExamEntry r) => !(l == r);
     }
 }

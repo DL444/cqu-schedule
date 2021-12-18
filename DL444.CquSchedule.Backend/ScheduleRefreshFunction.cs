@@ -205,7 +205,7 @@ namespace DL444.CquSchedule.Backend
         {
             try
             {
-                Schedule newSchedule = await scheduleService.GetScheduleAsync(username, termId, token);
+                Schedule newSchedule = await scheduleService.GetScheduleAsync(username, termId, token, TimeSpan.FromHours(8));
                 return (true, newSchedule);
             }
             catch (Exception ex)

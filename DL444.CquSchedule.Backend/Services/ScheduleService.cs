@@ -17,16 +17,17 @@ namespace DL444.CquSchedule.Backend.Services
     internal interface IScheduleService
     {
         Task<string> SignInAsync(string username, string password);
-        Task<Schedule> GetScheduleAsync(string username, string termId, string token);
+        Task<Schedule> GetScheduleAsync(string username, string termId, string token, TimeSpan offset);
         Task<Term> GetTermAsync(string token, TimeSpan offset);
     }
 
     internal class ScheduleService : IScheduleService
     {
-        public ScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService, IConfiguration config)
+        public ScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService, IExamStudentIdService examStudentIdService, IConfiguration config)
         {
             this.httpClient = httpClient;
             this.encryptionService = encryptionService;
+            this.examStudentIdService = examStudentIdService;
             vacationServeDays = config.GetValue("Calendar:VacationServeDays", 3);
         }
 
@@ -126,8 +127,9 @@ namespace DL444.CquSchedule.Backend.Services
             return tokenMatch.Groups[1].Value;
         }
 
-        public async Task<Schedule> GetScheduleAsync(string username, string termId, string token)
+        public async Task<Schedule> GetScheduleAsync(string username, string termId, string token, TimeSpan offset)
         {
+            Task<string> examStudentIdTask = examStudentIdService.GetExamStudentIdAsync(username);
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "https://my.cqu.edu.cn/api/enrollment/enrollment-batch/user-switch-batch");
             request.Content = new FormUrlEncodedContent(new[]
             {
@@ -136,6 +138,9 @@ namespace DL444.CquSchedule.Backend.Services
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
+
+            string examStudentId = await examStudentIdTask;
+            Task<HttpResponseMessage> examTask = httpClient.GetAsync($"https://my.cqu.edu.cn/api/exam/examTask/get-student-exam-list-outside?studentId={examStudentId}");
             
             request = new HttpRequestMessage(HttpMethod.Get, $"https://my.cqu.edu.cn/api/enrollment/timetable/student/{username}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
@@ -180,6 +185,48 @@ namespace DL444.CquSchedule.Backend.Services
                 }
             }
             schedule.Weeks.Sort((x, y) => x.WeekNumber.CompareTo(y.WeekNumber));
+
+            response = await examTask;
+            var examResponseModel = await JsonSerializer.DeserializeAsync<ExamResponseModel>(await response.Content.ReadAsStreamAsync());
+            if (!examResponseModel.Status.Equals("success", StringComparison.Ordinal) || examResponseModel.Data.Content == null)
+            {
+                throw new UpstreamRequestException("Upstream server did not return success status for exam request.")
+                {
+                    ErrorDescription = examResponseModel.Message
+                };
+            }
+            if (examResponseModel.Data.TotalPages > 1)
+            {
+                throw new UpstreamRequestException("Upstream server returned multiple exam pages.");
+            }
+            foreach (var responseEntry in examResponseModel.Data.Content)
+            {
+                bool dateParseSuccess = DateTime.TryParse(responseEntry.Date, out DateTime localDate);
+                bool startTimeParseSuccess = DateTime.TryParse(responseEntry.StartTime, out DateTime localStartTimeInDay);
+                bool endTimeParseSuccess = DateTime.TryParse(responseEntry.EndTime, out DateTime localEndTimeInDay);
+                if (!dateParseSuccess || !startTimeParseSuccess || !endTimeParseSuccess || localEndTimeInDay < localStartTimeInDay)
+                {
+                    continue;
+                }
+                DateTime localStartTime = new DateTime(localDate.Year, localDate.Month, localDate.Day, localStartTimeInDay.Hour, localStartTimeInDay.Minute, localStartTimeInDay.Second);
+                DateTime localEndTime = new DateTime(localDate.Year, localDate.Month, localDate.Day, localEndTimeInDay.Hour, localEndTimeInDay.Minute, localEndTimeInDay.Second);
+                DateTimeOffset startTime = new DateTimeOffset(localStartTime, offset);
+                DateTimeOffset endTime = new DateTimeOffset(localEndTime, offset);
+
+                bool seatParseSuccess = int.TryParse(responseEntry.Seat, out int seat);
+                ExamEntry entry = new ExamEntry
+                {
+                    Name = $"{responseEntry.Name}考试",
+                    Room = responseEntry.Room,
+                    SimplifiedRoom = GetSimplifiedRoom(responseEntry.Room),
+                    Seat = seatParseSuccess ? seat : 0,
+                    StartTime = startTime,
+                    EndTime = endTime
+                };
+                schedule.Exams.Add(entry);
+            }
+            schedule.Exams.Sort((x, y) => x.StartTime.CompareTo(y.StartTime));
+
             return schedule;
         }
 
@@ -371,6 +418,40 @@ namespace DL444.CquSchedule.Backend.Services
             public string ClassType { get; set; }
         }
 
+        private struct ExamResponseModel
+        {
+            [JsonPropertyName("status")]
+            public string Status { get; set; }
+            [JsonPropertyName("msg")]
+            public string Message { get; set; }
+            [JsonPropertyName("data")]
+            public ExamDataModel Data { get; set; }
+        }
+
+        private struct ExamDataModel
+        {
+            [JsonPropertyName("content")]
+            public ExamContentEntry[] Content { get; set; }
+            [JsonPropertyName("totalPages")]
+            public int TotalPages { get; set; }
+        }
+
+        private struct ExamContentEntry
+        {
+            [JsonPropertyName("courseName")]
+            public string Name { get; set; }
+            [JsonPropertyName("roomName")]
+            public string Room { get; set; }
+            [JsonPropertyName("seatNum")]
+            public string Seat { get; set; }
+            [JsonPropertyName("examDate")]
+            public string Date { get; set; }
+            [JsonPropertyName("startTime")]
+            public string StartTime { get; set; }
+            [JsonPropertyName("endTime")]
+            public string EndTime { get; set; }
+        }
+
         private struct LecturerEntry
         {
             [JsonPropertyName("instructorName")]
@@ -504,6 +585,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         private readonly HttpClient httpClient;
         private readonly IUpstreamCredentialEncryptionService encryptionService;
+        private readonly IExamStudentIdService examStudentIdService;
         private readonly int vacationServeDays;
         private static readonly Regex roomSimplifyRegex = new Regex("(室|机房|中心|分析系统|创新设计|展示与分析).*?-(.*?)$");
         private static readonly string[] expClassTypes = new []{ "上机", "实验" };

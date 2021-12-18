@@ -46,48 +46,76 @@ namespace DL444.CquSchedule.Backend.Services
                     {
                         continue;
                     }
-                    TimeSpan startTime = wellknown.Schedule[entry.StartSession - 1].StartOffset;
-                    int endSession = Math.Min(entry.EndSession, wellknown.Schedule.Count);
-                    TimeSpan endTime = wellknown.Schedule[endSession - 1].EndOffset;
-
-                    descriptionBuilder.Clear();
-                    bool appendRoom = entry.Room != null && !entry.Room.Equals(entry.SimplifiedRoom, StringComparison.Ordinal);
-                    bool appendLecturer = entry.Lecturer != null;
-                    if (appendRoom)
-                    {
-                        descriptionBuilder.Append(locService.GetString("CalendarRoom", locService.DefaultCulture, entry.Room));
-                    }
-                    if (appendRoom && appendLecturer)
-                    {
-                        descriptionBuilder.Append("\n");
-                    }
-                    if (appendLecturer)
-                    {
-                        descriptionBuilder.Append(locService.GetString("CalendarLecturer", locService.DefaultCulture, entry.Lecturer));
-                    }
-                    
-                    CalendarEvent calEvent = new CalendarEvent()
-                    {
-                        Summary = entry.Name,
-                        DtStart = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, startTime),
-                        DtEnd = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, endTime),
-                        Location = entry.SimplifiedRoom,
-                        Description = descriptionBuilder.ToString(),
-                        Alarms = {
-                            new Alarm()
-                            {
-                                Trigger = new Trigger(new TimeSpan(0, -remindTime, 0))
-                            }
-                        }
-                    };
-                    calendar.Events.Add(calEvent);
+                    calendar.Events.Add(GetCalendarEvent(entry, currentTerm, week, remindTime, descriptionBuilder));
                 }
+            }
+
+            foreach (var exam in schedule.Exams)
+            {
+                calendar.Events.Add(GetCalendarEvent(exam, remindTime));
             }
 
             return new CalendarSerializer(calendar).SerializeToString();
         }
 
         public string GetEmptyCalendar() => new CalendarSerializer(new Calendar()).SerializeToString();
+
+        private CalendarEvent GetCalendarEvent(ScheduleEntry entry, Term currentTerm, ScheduleWeek week, int remindTime, StringBuilder descriptionBuilder)
+        {
+            TimeSpan startTime = wellknown.Schedule[entry.StartSession - 1].StartOffset;
+            int endSession = Math.Min(entry.EndSession, wellknown.Schedule.Count);
+            TimeSpan endTime = wellknown.Schedule[endSession - 1].EndOffset;
+
+            descriptionBuilder.Clear();
+            bool appendRoom = entry.Room != null && !entry.Room.Equals(entry.SimplifiedRoom, StringComparison.Ordinal);
+            bool appendLecturer = entry.Lecturer != null;
+            if (appendRoom)
+            {
+                descriptionBuilder.Append(locService.GetString("CalendarRoom", locService.DefaultCulture, entry.Room));
+            }
+            if (appendRoom && appendLecturer)
+            {
+                descriptionBuilder.Append("\n");
+            }
+            if (appendLecturer)
+            {
+                descriptionBuilder.Append(locService.GetString("CalendarLecturer", locService.DefaultCulture, entry.Lecturer));
+            }
+            
+            return new CalendarEvent()
+            {
+                Summary = entry.Name,
+                DtStart = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, startTime),
+                DtEnd = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, endTime),
+                Location = entry.SimplifiedRoom,
+                Description = descriptionBuilder.ToString(),
+                Alarms = {
+                    new Alarm()
+                    {
+                        Trigger = new Trigger(new TimeSpan(0, -remindTime, 0))
+                    }
+                }
+            };
+        }
+
+        private CalendarEvent GetCalendarEvent(ExamEntry exam, int remindTime)
+        {
+            bool roomSimplified = exam.Room != null && !exam.Room.Equals(exam.SimplifiedRoom, StringComparison.Ordinal);
+            return new CalendarEvent()
+            {
+                Summary = exam.Name,
+                DtStart = new CalDateTime(exam.StartTime.UtcDateTime),
+                DtEnd = new CalDateTime(exam.EndTime.UtcDateTime),
+                Location = exam.Seat > 0 ? $"{exam.SimplifiedRoom}@{exam.Seat}" : exam.SimplifiedRoom,
+                Description = roomSimplified ? exam.Room : string.Empty,
+                Alarms = {
+                    new Alarm()
+                    {
+                        Trigger = new Trigger(new TimeSpan(0, -remindTime, 0))
+                    }
+                }
+            };
+        }
 
         private CalDateTime GetTime(DateTimeOffset termStartDate, int week, int dayOfWeek, TimeSpan time)
         {
