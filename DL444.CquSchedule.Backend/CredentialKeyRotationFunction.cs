@@ -8,7 +8,7 @@ using Azure.Security.KeyVault.Keys;
 using Azure.Security.KeyVault.Keys.Cryptography;
 using DL444.CquSchedule.Backend.Services;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.EventGrid.Models;
+using Azure.Messaging.EventGrid;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.EventGrid;
@@ -119,12 +119,12 @@ namespace DL444.CquSchedule.Backend
                 log.LogError("Event with unsupported type received. Type {eventType}", eventGridEvent.EventType);
                 return;
             }
-            if (!(eventGridEvent.Data is JObject obj))
+            if (!(eventGridEvent.Data is BinaryData obj))
             {
                 log.LogError("Event data is null.");
                 return;
             }
-            var data = obj.ToObject<EventData>();
+            var data = obj.ToObjectFromJson<EventData>();
             if (!data.ObjectName.Equals(keyName, StringComparison.Ordinal))
             {
                 return;

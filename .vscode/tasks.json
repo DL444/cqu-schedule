@@ -60,6 +60,7 @@
 				"/property:GenerateFullPaths=true",
 				"/consoleloggerparameters:NoSummary",
 				"-p:PublishReadyToRun=true",
+				"--no-self-contained",
 				"--runtime",
 				"win-x86"
 			],
@@ -74,7 +75,7 @@
 			"type": "func",
 			"dependsOn": "build",
 			"options": {
-				"cwd": "${workspaceFolder}/DL444.CquSchedule.Backend/bin/Debug/netcoreapp3.1"
+				"cwd": "${workspaceFolder}/DL444.CquSchedule.Backend/bin/Debug/net6.0"
 			},
 			"command": "host start",
 			"isBackground": true,
