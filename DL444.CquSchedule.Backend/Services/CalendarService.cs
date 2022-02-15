@@ -47,7 +47,7 @@ namespace DL444.CquSchedule.Backend.Services
 
             Calendar calendar = new Calendar();
             StringBuilder descriptionBuilder = new StringBuilder();
-            if (eventCategories.HasFlag(CalenderEventCategories.Courses))
+            if (eventCategories.HasFlag(CalenderEventCategories.Courses) && schedule.Weeks != null)
             {
                 foreach (var week in schedule.Weeks)
                 {
@@ -62,7 +62,7 @@ namespace DL444.CquSchedule.Backend.Services
                 }
             }
 
-            if (eventCategories.HasFlag(CalenderEventCategories.Exams))
+            if (eventCategories.HasFlag(CalenderEventCategories.Exams) && schedule.Exams != null)
             {
                 foreach (var exam in schedule.Exams)
                 {
