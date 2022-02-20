@@ -1,12 +1,14 @@
 using System;
 using System.Threading.Tasks;
+using DL444.CquSchedule.Backend.Extensions;
+using DL444.CquSchedule.Backend.Models;
+using DL444.CquSchedule.Backend.Services;
+using DL444.CquSchedule.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
-using DL444.CquSchedule.Backend.Services;
-using DL444.CquSchedule.Models;
 
 namespace DL444.CquSchedule.Backend
 {
@@ -26,23 +28,19 @@ namespace DL444.CquSchedule.Backend
             try
             {
                 ServiceStatus status = (await dataService.GetServiceStatusAsync()).Status;
-                return new OkObjectResult(new Response<ServiceStatus>(status));
+                return ServiceStatusResponseSerializerContext.Default.GetSerializedResponse(new Response<ServiceStatus>(status));
             }
             catch (Microsoft.Azure.Cosmos.CosmosException ex)
             {
                 log.LogError(ex, "Failed to fetch service status from database. Status {status}", ex.StatusCode);
-                return new ObjectResult(new Response<ServiceStatus>(localizationService.GetString("ServiceErrorCannotGetStatus")))
-                {
-                    StatusCode = 503
-                };
+                var response = new Response<ServiceStatus>(localizationService.GetString("ServiceErrorCannotGetStatus"));
+                return ServiceStatusResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to fetch service status.");
-                return new ObjectResult(new Response<ServiceStatus>(localizationService.GetString("ServiceErrorCannotGetStatus")))
-                {
-                    StatusCode = 503
-                };
+                var response = new Response<ServiceStatus>(localizationService.GetString("ServiceErrorCannotGetStatus"));
+                return ServiceStatusResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
         }
 

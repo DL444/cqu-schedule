@@ -96,7 +96,7 @@ namespace DL444.CquSchedule.Backend.Services
             {
                 descriptionBuilder.Append(locService.GetString("CalendarLecturer", locService.DefaultCulture, entry.Lecturer));
             }
-            
+
             return new CalendarEvent()
             {
                 Summary = entry.Name,

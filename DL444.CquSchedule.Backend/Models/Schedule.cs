@@ -76,8 +76,8 @@ namespace DL444.CquSchedule.Backend.Models
 
         public override int GetHashCode() => HashCode.Combine(User, Weeks);
 
-        public static bool operator == (Schedule l, Schedule r) => l.Equals(r);
-        public static bool operator != (Schedule l, Schedule r) => !(l == r);
+        public static bool operator ==(Schedule l, Schedule r) => l.Equals(r);
+        public static bool operator !=(Schedule l, Schedule r) => !(l == r);
     }
 
     public struct ScheduleWeek : IEquatable<ScheduleWeek>
@@ -106,9 +106,9 @@ namespace DL444.CquSchedule.Backend.Models
         public override bool Equals(object obj) => obj is ScheduleWeek other ? Equals(other) : false;
 
         public override int GetHashCode() => HashCode.Combine(WeekNumber, Entries);
-        
-        public static bool operator == (ScheduleWeek l, ScheduleWeek r) => l.Equals(r);
-        public static bool operator != (ScheduleWeek l, ScheduleWeek r) => !(l == r);
+
+        public static bool operator ==(ScheduleWeek l, ScheduleWeek r) => l.Equals(r);
+        public static bool operator !=(ScheduleWeek l, ScheduleWeek r) => !(l == r);
     }
 
     public struct ScheduleEntry : IEquatable<ScheduleEntry>
@@ -121,7 +121,7 @@ namespace DL444.CquSchedule.Backend.Models
         public int StartSession { get; set; }
         public int EndSession { get; set; }
 
-        public bool Equals(ScheduleEntry other) => 
+        public bool Equals(ScheduleEntry other) =>
             string.Equals(Name, other.Name, StringComparison.Ordinal)
                 && DayOfWeek == other.DayOfWeek
                 && StartSession == other.StartSession
@@ -134,8 +134,8 @@ namespace DL444.CquSchedule.Backend.Models
 
         public override int GetHashCode() => HashCode.Combine(Name, Lecturer, Room, SimplifiedRoom, DayOfWeek, StartSession, EndSession);
 
-        public static bool operator == (ScheduleEntry l, ScheduleEntry r) => l.Equals(r);
-        public static bool operator != (ScheduleEntry l, ScheduleEntry r) => !(l == r);
+        public static bool operator ==(ScheduleEntry l, ScheduleEntry r) => l.Equals(r);
+        public static bool operator !=(ScheduleEntry l, ScheduleEntry r) => !(l == r);
     }
 
     public struct ExamEntry : IEquatable<ExamEntry>
@@ -159,7 +159,7 @@ namespace DL444.CquSchedule.Backend.Models
 
         public override int GetHashCode() => HashCode.Combine(Name, Room, SimplifiedRoom, Seat, StartTime, EndTime);
 
-        public static bool operator == (ExamEntry l, ExamEntry r) => l.Equals(r);
-        public static bool operator != (ExamEntry l, ExamEntry r) => !(l == r);
+        public static bool operator ==(ExamEntry l, ExamEntry r) => l.Equals(r);
+        public static bool operator !=(ExamEntry l, ExamEntry r) => !(l == r);
     }
 }

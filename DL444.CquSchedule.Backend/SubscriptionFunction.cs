@@ -159,11 +159,13 @@ namespace DL444.CquSchedule.Backend
             }
             else if (credential.Username.Length > 8)
             {
-                return new BadRequestObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("UndergraduateOnly")));
+                var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UndergraduateOnly"));
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 400);
             }
             else if (!credential.Username.StartsWith("20", StringComparison.Ordinal))
             {
-                return new BadRequestObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UsernameInvalid")));
+                var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UsernameInvalid"));
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 400);
             }
 
             string token;
@@ -176,6 +178,7 @@ namespace DL444.CquSchedule.Backend
             catch (AuthenticationException ex)
             {
                 string message;
+                var statusCode = 401;
                 if (ex.Result == AuthenticationResult.IncorrectCredential)
                 {
                     message = localizationService.GetString("CredentialError");
@@ -195,23 +198,17 @@ namespace DL444.CquSchedule.Backend
                 else
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
-                    return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("AuthErrorCannotCreate")))
-                    {
-                        StatusCode = 503
-                    };
+                    message = localizationService.GetString("AuthErrorCannotCreate");
+                    statusCode = 503;
                 }
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(message))
-                {
-                    StatusCode = 401
-                };
+                var response = new CquSchedule.Models.Response<IcsSubscription>(message);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, statusCode);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to authenticate user.");
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
-                {
-                    StatusCode = 503
-                };
+                var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
 
             try
@@ -226,18 +223,14 @@ namespace DL444.CquSchedule.Backend
             catch (CosmosException ex)
             {
                 log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.StatusCode);
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
-                {
-                    StatusCode = 503
-                };
+                var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to fetch term info.");
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
-                {
-                    StatusCode = 503
-                };
+                var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
 
             try
@@ -247,10 +240,8 @@ namespace DL444.CquSchedule.Backend
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to fetch schedule info.");
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
-                {
-                    StatusCode = 503
-                };
+                var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
 
             string ics = calendarService.GetCalendar(term, schedule);
@@ -261,7 +252,8 @@ namespace DL444.CquSchedule.Backend
 
             if (!credential.ShouldSaveCredential)
             {
-                return new OkObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(null, ics), successMessage));
+                var response = new CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(null, ics), successMessage);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response);
             }
 
             User user = new User()
@@ -276,23 +268,20 @@ namespace DL444.CquSchedule.Backend
             {
                 await dataService.SetUserAsync(user);
                 await dataService.SetScheduleAsync(schedule);
-                return new OkObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(user.SubscriptionId, null), successMessage));
+                var response = new CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(user.SubscriptionId, null), successMessage);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response);
             }
             catch (CosmosException ex)
             {
                 log.LogError(ex, "Failed to update database. Status: {status}", ex.StatusCode);
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
-                {
-                    StatusCode = 503
-                };
+                var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to update database.");
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate")))
-                {
-                    StatusCode = 503
-                };
+                var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
         }
 
@@ -325,7 +314,8 @@ namespace DL444.CquSchedule.Backend
             }
             else if (!credential.Username.StartsWith("20", StringComparison.Ordinal))
             {
-                return new BadRequestObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("UsernameInvalid")));
+                var response = new CquSchedule.Models.Response<int>(localizationService.GetString("UsernameInvalid"));
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, 400);
             }
 
             try
@@ -335,6 +325,7 @@ namespace DL444.CquSchedule.Backend
             catch (AuthenticationException ex)
             {
                 string message;
+                var statusCode = 401;
                 if (ex.Result == AuthenticationResult.IncorrectCredential)
                 {
                     message = localizationService.GetString("CredentialError");
@@ -354,37 +345,30 @@ namespace DL444.CquSchedule.Backend
                 else
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
-                    return new ObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("AuthErrorCannotDelete")))
-                    {
-                        StatusCode = 503
-                    };
+                    message = localizationService.GetString("AuthErrorCannotDelete");
+                    statusCode = 503;
                 }
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<object>(message))
-                {
-                    StatusCode = 401
-                };
+                var response = new DL444.CquSchedule.Models.Response<int>(message);
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, statusCode);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to authenticate user.");
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("ServiceErrorCannotDelete")))
-                {
-                    StatusCode = 503
-                };
+                var response = new DL444.CquSchedule.Models.Response<int>(localizationService.GetString("ServiceErrorCannotDelete"));
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
 
             bool success = await dataService.DeleteUserAsync(credential.Username);
             if (success)
             {
-                return new OkObjectResult(new DL444.CquSchedule.Models.Response<object>(true, null, localizationService.GetString("UserDeleteSuccess")));
+                var response = new DL444.CquSchedule.Models.Response<int>(true, default, localizationService.GetString("UserDeleteSuccess"));
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response);
             }
             else
             {
                 log.LogError("Failed to delete user. Username: {username}", credential.Username);
-                return new ObjectResult(new DL444.CquSchedule.Models.Response<object>(localizationService.GetString("ServiceErrorCannotDelete")))
-                {
-                    StatusCode = 503
-                };
+                var response = new DL444.CquSchedule.Models.Response<int>(localizationService.GetString("ServiceErrorCannotDelete"));
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
         }
 

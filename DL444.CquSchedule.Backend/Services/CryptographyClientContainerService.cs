@@ -9,9 +9,9 @@ namespace DL444.CquSchedule.Backend.Services
 
     internal class CryptographyClientContainerService : ICryptographyClientContainerService
     {
-        public CryptographyClient Client 
-        { 
-            get => _client; 
+        public CryptographyClient Client
+        {
+            get => _client;
             set
             {
                 lock (clientLock)

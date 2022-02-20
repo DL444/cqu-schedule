@@ -34,11 +34,11 @@ namespace DL444.CquSchedule.Web.Services
             return await JsonSerializer.DeserializeAsync<Response<IcsSubscription>>(contentStream, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
         }
 
-        public async Task<Response<object>> DeleteSubscriptionAsync(Credential credential)
+        public async Task<Response<int>> DeleteSubscriptionAsync(Credential credential)
         {
             HttpResponseMessage response = await httpClient.PostAsJsonAsync("subscription/delete", credential);
             Stream contentStream = await response.Content.ReadAsStreamAsync();
-            return await JsonSerializer.DeserializeAsync<Response<object>>(contentStream, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+            return await JsonSerializer.DeserializeAsync<Response<int>>(contentStream, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
         }
 
         private readonly HttpClient httpClient;

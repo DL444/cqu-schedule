@@ -147,7 +147,8 @@ namespace DL444.CquSchedule.Backend
             }
             catch (AuthenticationException ex)
             {
-                if (ex.InnerException is SocketException) {
+                if (ex.InnerException is SocketException)
+                {
                     log.LogError(ex, "User authentication failed. Server closed connection.");
                 }
                 else if (ex.Result != AuthenticationResult.IncorrectCredential && ex.Result != AuthenticationResult.InfoRequired)

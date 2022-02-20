@@ -17,7 +17,7 @@ namespace DL444.CquSchedule.Backend
     {
         public override void Configure(IFunctionsHostBuilder builder)
         {
-            builder.Services.AddSingleton(services => 
+            builder.Services.AddSingleton(services =>
             {
                 var config = services.GetService<IConfiguration>();
                 string connection = config.GetValue<string>("Database:Connection");
@@ -53,7 +53,7 @@ namespace DL444.CquSchedule.Backend
             builder.Services.AddTransient<IDataService, DataService>();
             builder.Services.AddTransient<ITermService, TermService>();
             builder.Services.AddTransient<ICalendarService, CalendarService>();
-            builder.Services.AddTransient(services => 
+            builder.Services.AddTransient(services =>
             {
                 var config = services.GetService<IConfiguration>();
                 string keyVaultUri = config.GetValue<string>("Credential:KeyVault");

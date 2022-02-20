@@ -18,7 +18,7 @@ namespace DL444.CquSchedule.Backend
             IDataService dataService,
             IScheduleService scheduleService,
             ITermService termService,
-            IStoredCredentialEncryptionService storedEncryptionService) 
+            IStoredCredentialEncryptionService storedEncryptionService)
         {
             warmupUser = config.GetValue<string>("Warmup:User");
             this.dataService = dataService;

@@ -4,11 +4,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DL444.CquSchedule.Backend.Exceptions;
+using DL444.CquSchedule.Backend.Extensions;
 using DL444.CquSchedule.Backend.Models;
 using Microsoft.Extensions.Configuration;
 
@@ -141,11 +140,11 @@ namespace DL444.CquSchedule.Backend.Services
 
             string examStudentId = await examStudentIdTask;
             Task<HttpResponseMessage> examTask = httpClient.GetAsync($"https://my.cqu.edu.cn/api/exam/examTask/get-student-exam-list-outside?studentId={examStudentId}");
-            
+
             request = new HttpRequestMessage(HttpMethod.Get, $"https://my.cqu.edu.cn/api/enrollment/timetable/student/{username}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             response = await httpClient.SendAsync(request);
-            var responseModel = await JsonSerializer.DeserializeAsync<ScheduleResponseModel>(await response.Content.ReadAsStreamAsync());
+            var responseModel = await UpstreamScheduleResponseModelSerializerContext.Default.DeserializeFromStringAsync(await response.Content.ReadAsStreamAsync());
             Schedule schedule = new Schedule(username);
             if (!responseModel.Status.Equals("success", StringComparison.Ordinal) || responseModel.Data == null)
             {
@@ -187,7 +186,7 @@ namespace DL444.CquSchedule.Backend.Services
             schedule.Weeks.Sort((x, y) => x.WeekNumber.CompareTo(y.WeekNumber));
 
             response = await examTask;
-            var examResponseModel = await JsonSerializer.DeserializeAsync<ExamResponseModel>(await response.Content.ReadAsStreamAsync());
+            var examResponseModel = await UpstreamExamResponseModelSerializerContext.Default.DeserializeFromStringAsync(await response.Content.ReadAsStreamAsync());
             if (!examResponseModel.Status.Equals("success", StringComparison.Ordinal) || examResponseModel.Data.Content == null)
             {
                 throw new UpstreamRequestException("Upstream server did not return success status for exam request.")
@@ -235,7 +234,7 @@ namespace DL444.CquSchedule.Backend.Services
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/api/resourceapi/session/info-detail");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
-            var termListResponseModel = await JsonSerializer.DeserializeAsync<TermListResponseModel>(await response.Content.ReadAsStreamAsync());
+            var termListResponseModel = await UpstreamTermListResponseModelSerializerContext.Default.DeserializeFromStringAsync(await response.Content.ReadAsStreamAsync());
 
             (int prevHint, Term prevTerm) = await GetCandidateTermAsync(token, termListResponseModel.CurrentTerm, offset);
             if (prevHint == 0)
@@ -275,7 +274,7 @@ namespace DL444.CquSchedule.Backend.Services
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"https://my.cqu.edu.cn/api/resourceapi/session/info/{termId}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
-            var responseModel = await JsonSerializer.DeserializeAsync<TermResponseModel>(await response.Content.ReadAsStreamAsync());
+            var responseModel = await UpstreamTermResponseModelSerializerContext.Default.DeserializeFromStringAsync(await response.Content.ReadAsStreamAsync());
             if (!responseModel.Status.Equals("success", StringComparison.Ordinal))
             {
                 throw new UpstreamRequestException("Upstream server did not return success status for term request.")
@@ -390,107 +389,6 @@ namespace DL444.CquSchedule.Backend.Services
             public string Key { get; set; }
         }
 
-        private struct ScheduleResponseModel
-        {
-            [JsonPropertyName("status")]
-            public string Status { get; set; }
-            [JsonPropertyName("msg")]
-            public string Message { get; set; }
-            [JsonPropertyName("data")]
-            public ScheduleDataEntry[] Data { get; set; }
-        }
-
-        private struct ScheduleDataEntry
-        {
-            [JsonPropertyName("courseName")]
-            public string Name { get; set; }
-            [JsonPropertyName("roomName")]
-            public string Room { get; set; }
-            [JsonPropertyName("teachingWeek")]
-            public string Weeks { get; set; }
-            [JsonPropertyName("weekDay")]
-            public string DayOfWeek { get; set; }
-            [JsonPropertyName("period")]
-            public string Session { get; set; }
-            [JsonPropertyName("classTimetableInstrVOList")]
-            public LecturerEntry[] Lecturers { get; set; }
-            [JsonPropertyName("classType")]
-            public string ClassType { get; set; }
-        }
-
-        private struct ExamResponseModel
-        {
-            [JsonPropertyName("status")]
-            public string Status { get; set; }
-            [JsonPropertyName("msg")]
-            public string Message { get; set; }
-            [JsonPropertyName("data")]
-            public ExamDataModel Data { get; set; }
-        }
-
-        private struct ExamDataModel
-        {
-            [JsonPropertyName("content")]
-            public ExamContentEntry[] Content { get; set; }
-            [JsonPropertyName("totalPages")]
-            public int TotalPages { get; set; }
-        }
-
-        private struct ExamContentEntry
-        {
-            [JsonPropertyName("courseName")]
-            public string Name { get; set; }
-            [JsonPropertyName("roomName")]
-            public string Room { get; set; }
-            [JsonPropertyName("seatNum")]
-            public string Seat { get; set; }
-            [JsonPropertyName("examDate")]
-            public string Date { get; set; }
-            [JsonPropertyName("startTime")]
-            public string StartTime { get; set; }
-            [JsonPropertyName("endTime")]
-            public string EndTime { get; set; }
-        }
-
-        private struct LecturerEntry
-        {
-            [JsonPropertyName("instructorName")]
-            public string Lecturer { get; set; }
-        }
-
-        private struct TermResponseModel
-        {
-            [JsonPropertyName("status")]
-            public string Status { get; set; }
-            [JsonPropertyName("msg")]
-            public string Message { get; set; }
-            [JsonPropertyName("data")]
-            public TermDataModel Data { get; set; }
-        }
-
-        private struct TermDataModel
-        {
-            [JsonPropertyName("beginDate")]
-            public string StartDateString { get; set; }
-            [JsonPropertyName("endDate")]
-            public string EndDateString { get; set; }
-        }
-
-        private struct TermListResponseModel
-        {
-            [JsonPropertyName("curSessionId")]
-            public string CurrentTerm { get; set; }
-
-            [JsonPropertyName("sessionFinder")]
-            public List<TermListItemModel> Terms { get; set; }
-        }
-
-        private struct TermListItemModel
-        {
-            [JsonPropertyName("id")]
-            public string Id { get; set; }
-        }
-
         private class CookieContainer
         {
             public string GetCookies(string uri) => GetCookies(new Uri(uri));
@@ -588,6 +486,6 @@ namespace DL444.CquSchedule.Backend.Services
         private readonly IExamStudentIdService examStudentIdService;
         private readonly int vacationServeDays;
         private static readonly Regex roomSimplifyRegex = new Regex("(室|机房|中心|分析系统|创新设计|展示与分析).*?-(.*?)$");
-        private static readonly string[] expClassTypes = new []{ "上机", "实验" };
+        private static readonly string[] expClassTypes = new[] { "上机", "实验" };
     }
 }

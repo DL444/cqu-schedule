@@ -36,7 +36,7 @@ else
         errorMessage = string.Empty;
         try
         {
-            Response<object> response = await ApiService.DeleteSubscriptionAsync(credential);
+            Response<int> response = await ApiService.DeleteSubscriptionAsync(credential);
             if (response.Success)
             {
                 NavMgr.NavigateTo($"delete-subscription-complete");
