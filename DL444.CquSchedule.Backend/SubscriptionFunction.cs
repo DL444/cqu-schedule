@@ -98,7 +98,12 @@ namespace DL444.CquSchedule.Backend
                     try
                     {
                         Term term = await termTask;
-                        return new OkObjectResult(calendarService.GetCalendar(term, schedule, eventCategories));
+                        return new ContentResult()
+                        {
+                            Content = calendarService.GetCalendar(term, schedule, eventCategories),
+                            ContentType = "text/calendar; charset=utf-8",
+                            StatusCode = 200
+                        };
                     }
                     catch (CosmosException ex)
                     {
@@ -244,7 +249,6 @@ namespace DL444.CquSchedule.Backend
                 return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
 
-            string ics = calendarService.GetCalendar(term, schedule);
             int vacationServeDays = calendarService.VacationCalendarServeDays;
             string successMessage = (DateTimeOffset.Now > term.EndDate.AddDays(vacationServeDays) || DateTimeOffset.Now < term.StartDate.AddDays(-vacationServeDays))
                 ? localizationService.GetString("OnVacationCalendarMayBeEmpty", localizationService.DefaultCulture, vacationServeDays)
@@ -252,6 +256,7 @@ namespace DL444.CquSchedule.Backend
 
             if (!credential.ShouldSaveCredential)
             {
+                string ics = calendarService.GetCalendar(term, schedule);
                 var response = new CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(null, ics), successMessage);
                 return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response);
             }
