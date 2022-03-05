@@ -118,7 +118,7 @@ namespace DL444.CquSchedule.Backend
                 log.LogError("Event with unsupported type received. Type {eventType}", eventGridEvent.EventType);
                 return;
             }
-            if (!(eventGridEvent.Data is BinaryData obj))
+            if (eventGridEvent.Data is not BinaryData obj)
             {
                 log.LogError("Event data is null.");
                 return;

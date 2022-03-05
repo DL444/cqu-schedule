@@ -90,7 +90,7 @@ namespace DL444.CquSchedule.Backend.Services
             }
             if (appendRoom && appendLecturer)
             {
-                descriptionBuilder.Append("\n");
+                descriptionBuilder.Append('\n');
             }
             if (appendLecturer)
             {
@@ -115,7 +115,7 @@ namespace DL444.CquSchedule.Backend.Services
             };
         }
 
-        private CalendarEvent GetCalendarEvent(ExamEntry exam, int remindTime)
+        private static CalendarEvent GetCalendarEvent(ExamEntry exam, int remindTime)
         {
             bool roomSimplified = exam.Room != null && !exam.Room.Equals(exam.SimplifiedRoom, StringComparison.Ordinal);
             return new CalendarEvent()
@@ -136,7 +136,7 @@ namespace DL444.CquSchedule.Backend.Services
             };
         }
 
-        private CalDateTime GetTime(DateTimeOffset termStartDate, int week, int dayOfWeek, TimeSpan time)
+        private static CalDateTime GetTime(DateTimeOffset termStartDate, int week, int dayOfWeek, TimeSpan time)
         {
             int daysSinceTermStart = (week - 1) * 7 + (dayOfWeek - 1);
             DateTimeOffset dateTime = termStartDate.AddDays(daysSinceTermStart).Add(time);

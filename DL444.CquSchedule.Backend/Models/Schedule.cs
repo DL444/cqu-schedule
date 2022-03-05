@@ -56,7 +56,7 @@ namespace DL444.CquSchedule.Backend.Models
             return true;
         }
 
-        public override bool Equals(object obj) => obj is Schedule other ? Equals(other) : false;
+        public override bool Equals(object obj) => obj is Schedule other && Equals(other);
 
         public override int GetHashCode() => HashCode.Combine(User, Weeks);
 
@@ -84,10 +84,10 @@ namespace DL444.CquSchedule.Backend.Models
 
             // Since there should be only a handful of items in the list this complexity should be acceptable.
             // Otherwise we need to copy and sort the lists.
-            return Entries == null ? true : Entries.All(x => other.Entries.Contains(x));
+            return Entries == null || Entries.All(x => other.Entries.Contains(x));
         }
 
-        public override bool Equals(object obj) => obj is ScheduleWeek other ? Equals(other) : false;
+        public override bool Equals(object obj) => obj is ScheduleWeek other && Equals(other);
 
         public override int GetHashCode() => HashCode.Combine(WeekNumber, Entries);
 
@@ -114,7 +114,7 @@ namespace DL444.CquSchedule.Backend.Models
                 && string.Equals(Room, other.Room, StringComparison.Ordinal)
                 && string.Equals(SimplifiedRoom, other.SimplifiedRoom, StringComparison.Ordinal);
 
-        public override bool Equals(object obj) => obj is ScheduleEntry other ? Equals(other) : false;
+        public override bool Equals(object obj) => obj is ScheduleEntry other && Equals(other);
 
         public override int GetHashCode() => HashCode.Combine(Name, Lecturer, Room, SimplifiedRoom, DayOfWeek, StartSession, EndSession);
 
@@ -139,7 +139,7 @@ namespace DL444.CquSchedule.Backend.Models
                 && string.Equals(Room, other.Room, StringComparison.Ordinal)
                 && string.Equals(SimplifiedRoom, other.SimplifiedRoom, StringComparison.Ordinal);
 
-        public override bool Equals(object obj) => obj is ExamEntry other ? Equals(other) : false;
+        public override bool Equals(object obj) => obj is ExamEntry other && Equals(other);
 
         public override int GetHashCode() => HashCode.Combine(Name, Room, SimplifiedRoom, Seat, StartTime, EndTime);
 
