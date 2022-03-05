@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DL444.CquSchedule.Backend
 {
-    internal class WarmupFunction
+    internal sealed class WarmupFunction
     {
         public WarmupFunction(
             IConfiguration config,

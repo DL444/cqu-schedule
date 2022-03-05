@@ -8,7 +8,7 @@ using DL444.CquSchedule.Models;
 
 namespace DL444.CquSchedule.Web.Services
 {
-    internal class ApiService
+    internal sealed class ApiService
     {
         public ApiService(HttpClient httpClient) => this.httpClient = httpClient;
 

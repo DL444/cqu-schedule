@@ -13,7 +13,7 @@ namespace DL444.CquSchedule.Backend.Services
         string GetString(string key, string culture, params object[] parameters);
     }
 
-    internal class LocalizationService : ILocalizationService
+    internal sealed class LocalizationService : ILocalizationService
     {
         public LocalizationService(IConfiguration config)
         {

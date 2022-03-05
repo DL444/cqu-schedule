@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DL444.CquSchedule.Web
 {
-    public class Program
+    public sealed class Program
     {
         public static async Task Main(string[] args)
         {

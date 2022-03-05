@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DL444.CquSchedule.Backend
 {
-    internal class StatusFunction
+    internal sealed class StatusFunction
     {
         public StatusFunction(IDataService dataService, ILocalizationService localizationService)
         {

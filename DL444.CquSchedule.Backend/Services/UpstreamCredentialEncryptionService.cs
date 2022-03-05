@@ -12,7 +12,7 @@ namespace DL444.CquSchedule.Backend.Services
         Task<string> EncryptAsync(string password, string key);
     }
 
-    internal class UpstreamCredentialEncryptionService : IUpstreamCredentialEncryptionService
+    internal sealed class UpstreamCredentialEncryptionService : IUpstreamCredentialEncryptionService
     {
         public Task<string> EncryptAsync(string password, string key) => GetAesStringAsync(GetRandomString(64) + password, key, GetRandomString(16));
 

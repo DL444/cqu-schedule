@@ -2,7 +2,7 @@
 
 namespace DL444.CquSchedule.Backend.Exceptions
 {
-    internal class UpstreamRequestException : Exception
+    internal sealed class UpstreamRequestException : Exception
     {
         public UpstreamRequestException() { }
         public UpstreamRequestException(string message) : base(message) { }

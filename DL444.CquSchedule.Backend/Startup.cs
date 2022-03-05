@@ -13,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 [assembly: FunctionsStartup(typeof(DL444.CquSchedule.Backend.Startup))]
 namespace DL444.CquSchedule.Backend
 {
-    internal class Startup : FunctionsStartup
+    internal sealed class Startup : FunctionsStartup
     {
         public override void Configure(IFunctionsHostBuilder builder)
         {

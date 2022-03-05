@@ -20,7 +20,7 @@ using User = DL444.CquSchedule.Backend.Models.User;
 
 namespace DL444.CquSchedule.Backend
 {
-    internal class CredentialKeyRotationFunction
+    internal sealed class CredentialKeyRotationFunction
     {
         public CredentialKeyRotationFunction(
             IConfiguration config,

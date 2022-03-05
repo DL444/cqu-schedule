@@ -17,7 +17,7 @@ using User = DL444.CquSchedule.Backend.Models.User;
 
 namespace DL444.CquSchedule.Backend
 {
-    internal class SubscriptionGetFunction
+    internal sealed class SubscriptionGetFunction
     {
         public SubscriptionGetFunction(IDataService dataService, ITermService termService, ICalendarService calendarService)
         {
@@ -134,7 +134,7 @@ namespace DL444.CquSchedule.Backend
         private readonly ICalendarService calendarService;
     }
 
-    internal class SubscriptionPostFunction
+    internal sealed class SubscriptionPostFunction
     {
         public SubscriptionPostFunction(
             IDataService dataService,
@@ -298,7 +298,7 @@ namespace DL444.CquSchedule.Backend
         private readonly ILocalizationService localizationService;
     }
 
-    internal class SubscriptionDeleteFunction
+    internal sealed class SubscriptionDeleteFunction
     {
         public SubscriptionDeleteFunction(IDataService dataService, IScheduleService scheduleService, ILocalizationService localizationService)
         {

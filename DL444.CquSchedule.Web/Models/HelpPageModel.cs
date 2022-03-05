@@ -1,6 +1,6 @@
 ﻿namespace DL444.CquSchedule.Web.Models
 {
-    public class HelpPageModel
+    public sealed class HelpPageModel
     {
         public AddMethod AddMethod { get; set; }
         public CalendarServiceType ServiceType { get; set; }

@@ -26,7 +26,7 @@ namespace DL444.CquSchedule.Backend.Services
         string GetEmptyCalendar();
     }
 
-    internal class CalendarService : ICalendarService
+    internal sealed class CalendarService : ICalendarService
     {
         public CalendarService(IConfiguration config, IWellknownDataService wellknown, ILocalizationService locService)
         {

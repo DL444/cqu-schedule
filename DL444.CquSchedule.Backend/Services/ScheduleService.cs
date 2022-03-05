@@ -20,7 +20,7 @@ namespace DL444.CquSchedule.Backend.Services
         Task<Term> GetTermAsync(string token, TimeSpan offset);
     }
 
-    internal class ScheduleService : IScheduleService
+    internal sealed class ScheduleService : IScheduleService
     {
         public ScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService, IExamStudentIdService examStudentIdService, IConfiguration config)
         {
@@ -389,7 +389,7 @@ namespace DL444.CquSchedule.Backend.Services
             public string Key { get; set; }
         }
 
-        private class CookieContainer
+        private sealed class CookieContainer
         {
             public string GetCookies(string uri) => GetCookies(new Uri(uri));
 

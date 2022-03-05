@@ -11,7 +11,7 @@ namespace DL444.CquSchedule.Backend.Services
         Task SetTermAsync(Term term);
     }
 
-    internal class TermService : ITermService
+    internal sealed class TermService : ITermService
     {
         public TermService(Container container) => this.container = container;
 

@@ -10,7 +10,7 @@ namespace DL444.CquSchedule.Backend.Services
         IList<ScheduleTime> Schedule { get; }
     }
 
-    internal class WellknownDataService : IWellknownDataService
+    internal sealed class WellknownDataService : IWellknownDataService
     {
         public WellknownDataService(IConfiguration config)
         {

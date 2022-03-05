@@ -7,7 +7,7 @@ namespace DL444.CquSchedule.Backend.Services
         CryptographyClient Client { get; set; }
     }
 
-    internal class CryptographyClientContainerService : ICryptographyClientContainerService
+    internal sealed class CryptographyClientContainerService : ICryptographyClientContainerService
     {
         public CryptographyClient Client
         {

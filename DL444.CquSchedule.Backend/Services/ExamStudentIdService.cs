@@ -11,7 +11,7 @@ namespace DL444.CquSchedule.Backend.Services
         Task<string> GetExamStudentIdAsync(string studentId);
     }
 
-    internal class ExamStudentIdService : IExamStudentIdService
+    internal sealed class ExamStudentIdService : IExamStudentIdService
     {
         public async Task<string> GetExamStudentIdAsync(string studentId)
         {

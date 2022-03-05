@@ -14,7 +14,7 @@ using User = DL444.CquSchedule.Backend.Models.User;
 
 namespace DL444.CquSchedule.Backend
 {
-    internal class ScheduleRefreshFunction
+    internal sealed class ScheduleRefreshFunction
     {
         public ScheduleRefreshFunction(
             IDataService dataService,

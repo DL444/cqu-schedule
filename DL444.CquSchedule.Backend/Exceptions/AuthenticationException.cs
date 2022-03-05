@@ -3,7 +3,7 @@ using DL444.CquSchedule.Backend.Models;
 
 namespace DL444.CquSchedule.Backend.Exceptions
 {
-    internal class AuthenticationException : Exception
+    internal sealed class AuthenticationException : Exception
     {
         public AuthenticationException() { }
         public AuthenticationException(string message) : base(message) { }

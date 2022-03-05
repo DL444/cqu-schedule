@@ -20,7 +20,7 @@ namespace DL444.CquSchedule.Backend.Services
         Task<ServiceStatusContainer> GetServiceStatusAsync();
     }
 
-    internal class DataService : IDataService
+    internal sealed class DataService : IDataService
     {
         public DataService(Container container) => this.container = container;
 

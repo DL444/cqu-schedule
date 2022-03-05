@@ -13,7 +13,7 @@ namespace DL444.CquSchedule.Backend.Services
         Task<User> DecryptAsync(User user);
     }
 
-    internal class KeyVaultCredentialEncryptionService : IStoredCredentialEncryptionService
+    internal sealed class KeyVaultCredentialEncryptionService : IStoredCredentialEncryptionService
     {
         public KeyVaultCredentialEncryptionService(ICryptographyClientContainerService clientContainerService) => this.clientContainerService = clientContainerService;
 
