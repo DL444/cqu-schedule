@@ -7,9 +7,9 @@
         <small class="form-text text-muted">请注意不是统一身份认证号</small>
     </div>
     <div class="form-group">
-        <label for="passwordInput">统一身份认证密码</label>
+        <label for="passwordInput">密码</label>
         <InputText @bind-Value="Credential.Password" type="password" disabled="@Disabled" id="passwordInput" class="form-control" />
-        <small class="form-text text-muted">不确定？先在 <a href="http://my.cqu.edu.cn/enroll" target="_blank">my.cqu.edu.cn</a> 测试</small>
+        <small class="form-text text-muted">本科生为统一身份认证密码，研究生为 MIS 登录密码<br />不确定？先在 <a href="https://my.cqu.edu.cn/enroll" target="_blank">my.cqu.edu.cn</a> 或 <a href="http://mis.cqu.edu.cn/mis" target="_blank">mis.cqu.edu.cn</a> 测试</small>
     </div>
 </EditForm>
 
