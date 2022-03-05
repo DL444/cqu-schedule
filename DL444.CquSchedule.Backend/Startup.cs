@@ -39,12 +39,20 @@ namespace DL444.CquSchedule.Backend
             builder.Services.AddSingleton<IWellknownDataService, WellknownDataService>();
             builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
 
-            int timeout = builder.GetContext().Configuration.GetValue("Upstream:Timeout", 30);
-            builder.Services.AddHttpClient<IScheduleService, ScheduleService>(x => x.Timeout = TimeSpan.FromSeconds(timeout))
+            var timeout = TimeSpan.FromSeconds(builder.GetContext().Configuration.GetValue("Upstream:Timeout", 30));
+            // Pooled HttpMessageHandler via IHttpClientFactory is incompatible with automatic cookie management.
+            // Manual cookie management required.
+            // See https://docs.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-6.0#cookies for more info. 
+            builder.Services.AddHttpClient<UndergraduateScheduleService>(x => x.Timeout = timeout)
                 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler()
                 {
                     UseCookies = false,
                     AllowAutoRedirect = false
+                });
+            builder.Services.AddHttpClient<PostgraduateScheduleService>(x => x.Timeout = timeout)
+                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler()
+                {
+                    UseCookies = false
                 });
 
             builder.Services.AddTransient<IUpstreamCredentialEncryptionService, UpstreamCredentialEncryptionService>();

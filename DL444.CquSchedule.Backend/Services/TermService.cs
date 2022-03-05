@@ -34,6 +34,11 @@ namespace DL444.CquSchedule.Backend.Services
                     term = await onFailure(this);
                 }
 
+                if (string.IsNullOrEmpty(term.SessionTermId))
+                {
+                    return default;
+                }
+
                 lock (cacheLock)
                 {
                     if (!cached)

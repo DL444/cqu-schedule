@@ -19,12 +19,14 @@ namespace DL444.CquSchedule.Backend
         public ScheduleRefreshFunction(
             IDataService dataService,
             ITermService termService,
-            IScheduleService scheduleService,
+            UndergraduateScheduleService undergradScheduleService,
+            PostgraduateScheduleService postgradScheduleService,
             IStoredCredentialEncryptionService encryptionService)
         {
             this.dataService = dataService;
             this.termService = termService;
-            this.scheduleService = scheduleService;
+            this.undergradScheduleService = undergradScheduleService;
+            this.postgradScheduleService = postgradScheduleService;
             this.encryptionService = encryptionService;
         }
 
@@ -54,19 +56,27 @@ namespace DL444.CquSchedule.Backend
                 return input.SessionTermId;
             }
             Task<(bool, Schedule)> oldFetchTask = GetOldScheduleAsync(user.Username, log);
-            (AuthenticationResult authResult, string token) = await SignInAsync(user, log);
+
+            IScheduleService scheduleService = user.UserType == UserType.Undergraduate ? undergradScheduleService : postgradScheduleService;
+            (AuthenticationResult authResult, ISignInContext signInContext) = await SignInAsync(scheduleService, user, log);
 
             bool newFetchSuccess;
             Schedule newSchedule;
             RecordStatus newStatus;
-            if (authResult == AuthenticationResult.Success)
+            if (authResult != AuthenticationResult.Success)
+            {
+                newFetchSuccess = false;
+                newSchedule = default;
+                newStatus = authResult == AuthenticationResult.IncorrectCredential ? RecordStatus.StaleAuthError : RecordStatus.StaleUpstreamError;
+            }
+            else if (scheduleService.SupportsMultiterm)
             {
                 Task<bool> termUpdateTask = null;
-                (bool getTermSuccess, Term newTerm) = await GetTermAsync(input.TermRefreshed, token, log);
+                (bool getTermSuccess, Term newTerm) = await GetTermAsync(scheduleService, input.TermRefreshed, signInContext, log);
                 if (getTermSuccess)
                 {
                     termUpdateTask = input.TermRefreshed ? null : UpdateTermAsync(newTerm, log);
-                    (newFetchSuccess, newSchedule) = await GetNewScheduleAsync(user.Username, newTerm.SessionTermId, token, log);
+                    (newFetchSuccess, newSchedule) = await GetNewScheduleAsync(scheduleService, user.Username, newTerm.SessionTermId, signInContext, log);
                     newStatus = newFetchSuccess ? RecordStatus.UpToDate : RecordStatus.StaleUpstreamError;
                 }
                 else
@@ -83,9 +93,8 @@ namespace DL444.CquSchedule.Backend
             }
             else
             {
-                newFetchSuccess = false;
-                newSchedule = default;
-                newStatus = authResult == AuthenticationResult.IncorrectCredential ? RecordStatus.StaleAuthError : RecordStatus.StaleUpstreamError;
+                (newFetchSuccess, newSchedule) = await GetNewScheduleAsync(scheduleService, user.Username, string.Empty, signInContext, log);
+                newStatus = newFetchSuccess ? RecordStatus.UpToDate : RecordStatus.StaleUpstreamError;
             }
 
             (bool oldFetchSuccess, Schedule oldSchedule) = await oldFetchTask;
@@ -138,12 +147,12 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
-        private async Task<(AuthenticationResult result, string token)> SignInAsync(User user, ILogger log)
+        private async Task<(AuthenticationResult result, ISignInContext signInContext)> SignInAsync(IScheduleService scheduleService, User user, ILogger log)
         {
             try
             {
-                string token = await scheduleService.SignInAsync(user.Username, user.Password);
-                return (AuthenticationResult.Success, token);
+                ISignInContext signInContext = await scheduleService.SignInAsync(user.Username, user.Password);
+                return (AuthenticationResult.Success, signInContext);
             }
             catch (AuthenticationException ex)
             {
@@ -164,11 +173,15 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
-        private async Task<(bool success, Term term)> GetTermAsync(bool termRefreshed, string token, ILogger log)
+        private async Task<(bool success, Term term)> GetTermAsync(IScheduleService scheduleService, bool termRefreshed, ISignInContext signInContext, ILogger log)
         {
+            if (!scheduleService.SupportsMultiterm)
+            {
+                return (true, default);
+            }
             try
             {
-                Term newTerm = termRefreshed ? await termService.GetTermAsync() : await scheduleService.GetTermAsync(token, TimeSpan.FromHours(8));
+                Term newTerm = termRefreshed ? await termService.GetTermAsync() : await scheduleService.GetTermAsync(signInContext, TimeSpan.FromHours(8));
                 return (true, newTerm);
             }
             catch (CosmosException ex)
@@ -202,11 +215,11 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
-        private async Task<(bool success, Schedule newSchedule)> GetNewScheduleAsync(string username, string termId, string token, ILogger log)
+        private async Task<(bool success, Schedule newSchedule)> GetNewScheduleAsync(IScheduleService scheduleService, string username, string termId, ISignInContext signInContext, ILogger log)
         {
             try
             {
-                Schedule newSchedule = await scheduleService.GetScheduleAsync(username, termId, token, TimeSpan.FromHours(8));
+                Schedule newSchedule = await scheduleService.GetScheduleAsync(username, termId, signInContext, TimeSpan.FromHours(8));
                 return (true, newSchedule);
             }
             catch (Exception ex)
@@ -263,7 +276,8 @@ namespace DL444.CquSchedule.Backend
 
         private readonly IDataService dataService;
         private readonly ITermService termService;
-        private readonly IScheduleService scheduleService;
+        private readonly IScheduleService undergradScheduleService;
+        private readonly IScheduleService postgradScheduleService;
         private readonly IStoredCredentialEncryptionService encryptionService;
     }
 }

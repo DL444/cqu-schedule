@@ -139,14 +139,16 @@ namespace DL444.CquSchedule.Backend
         public SubscriptionPostFunction(
             IDataService dataService,
             ITermService termService,
-            IScheduleService scheduleService,
+            UndergraduateScheduleService undergradScheduleService,
+            PostgraduateScheduleService postgradScheduleService,
             IStoredCredentialEncryptionService storedEncryptionService,
             ICalendarService calendarService,
             ILocalizationService localizationService)
         {
             this.dataService = dataService;
             this.termService = termService;
-            this.scheduleService = scheduleService;
+            this.undergradScheduleService = undergradScheduleService;
+            this.postgradScheduleService = postgradScheduleService;
             this.storedEncryptionService = storedEncryptionService;
             this.calendarService = calendarService;
             this.localizationService = localizationService;
@@ -162,23 +164,35 @@ namespace DL444.CquSchedule.Backend
             {
                 return new BadRequestResult();
             }
-            else if (credential.Username.Length > 8)
-            {
-                var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UndergraduateOnly"));
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 400);
-            }
             else if (!credential.Username.StartsWith("20", StringComparison.Ordinal))
             {
                 var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UsernameInvalid"));
                 return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 400);
             }
 
-            string token;
+            UserType userType;
+            IScheduleService scheduleService;
+            switch (credential.Username.Length)
+            {
+                case 8:
+                    userType = UserType.Undergraduate;
+                    scheduleService = undergradScheduleService;
+                    break;
+                case 12:
+                    userType = UserType.Postgraduate;
+                    scheduleService = postgradScheduleService;
+                    break;
+                default:
+                    var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UsernameInvalid"));
+                    return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 400);
+            }
+
+            ISignInContext signInContext;
             Term term;
             Schedule schedule;
             try
             {
-                token = await scheduleService.SignInAsync(credential.Username, credential.Password);
+                signInContext = await scheduleService.SignInAsync(credential.Username, credential.Password);
             }
             catch (AuthenticationException ex)
             {
@@ -220,7 +234,12 @@ namespace DL444.CquSchedule.Backend
             {
                 term = await termService.GetTermAsync(async ts =>
                 {
-                    Term term = await scheduleService.GetTermAsync(token, TimeSpan.FromHours(8));
+                    if (!scheduleService.SupportsMultiterm)
+                    {
+                        log.LogError("Reading term from database failed, but current user is incapable of fetching from upstream.");
+                        return default;
+                    }
+                    Term term = await scheduleService.GetTermAsync(signInContext, TimeSpan.FromHours(8));
                     await ts.SetTermAsync(term);
                     return term;
                 });
@@ -240,7 +259,7 @@ namespace DL444.CquSchedule.Backend
 
             try
             {
-                schedule = await scheduleService.GetScheduleAsync(credential.Username, term.SessionTermId, token, TimeSpan.FromHours(8));
+                schedule = await scheduleService.GetScheduleAsync(credential.Username, term.SessionTermId, signInContext, TimeSpan.FromHours(8));
             }
             catch (Exception ex)
             {
@@ -250,9 +269,9 @@ namespace DL444.CquSchedule.Backend
             }
 
             int vacationServeDays = calendarService.VacationCalendarServeDays;
-            string successMessage = (DateTimeOffset.Now > term.EndDate.AddDays(vacationServeDays) || DateTimeOffset.Now < term.StartDate.AddDays(-vacationServeDays))
-                ? localizationService.GetString("OnVacationCalendarMayBeEmpty", localizationService.DefaultCulture, vacationServeDays)
-                : null;
+            bool onVacation = scheduleService.SupportsMultiterm
+                && (DateTimeOffset.Now > term.EndDate.AddDays(vacationServeDays) || DateTimeOffset.Now < term.StartDate.AddDays(-vacationServeDays));
+            string successMessage = onVacation ? localizationService.GetString("OnVacationCalendarMayBeEmpty", localizationService.DefaultCulture, vacationServeDays) : null;
 
             if (!credential.ShouldSaveCredential)
             {
@@ -265,7 +284,8 @@ namespace DL444.CquSchedule.Backend
             {
                 Username = credential.Username,
                 Password = credential.Password,
-                SubscriptionId = Guid.NewGuid().ToString()
+                SubscriptionId = Guid.NewGuid().ToString(),
+                UserType = userType
             };
             user = await storedEncryptionService.EncryptAsync(user);
 
@@ -292,7 +312,8 @@ namespace DL444.CquSchedule.Backend
 
         private readonly IDataService dataService;
         private readonly ITermService termService;
-        private readonly IScheduleService scheduleService;
+        private readonly IScheduleService undergradScheduleService;
+        private readonly IScheduleService postgradScheduleService;
         private readonly IStoredCredentialEncryptionService storedEncryptionService;
         private readonly ICalendarService calendarService;
         private readonly ILocalizationService localizationService;
@@ -300,10 +321,15 @@ namespace DL444.CquSchedule.Backend
 
     internal sealed class SubscriptionDeleteFunction
     {
-        public SubscriptionDeleteFunction(IDataService dataService, IScheduleService scheduleService, ILocalizationService localizationService)
+        public SubscriptionDeleteFunction(
+            IDataService dataService,
+            UndergraduateScheduleService undergradScheduleService,
+            PostgraduateScheduleService postgradScheduleService,
+            ILocalizationService localizationService)
         {
             this.dataService = dataService;
-            this.scheduleService = scheduleService;
+            this.undergradScheduleService = undergradScheduleService;
+            this.postgradScheduleService = postgradScheduleService;
             this.localizationService = localizationService;
         }
 
@@ -321,6 +347,20 @@ namespace DL444.CquSchedule.Backend
             {
                 var response = new CquSchedule.Models.Response<int>(localizationService.GetString("UsernameInvalid"));
                 return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, 400);
+            }
+
+            IScheduleService scheduleService;
+            switch (credential.Username.Length)
+            {
+                case 8:
+                    scheduleService = undergradScheduleService;
+                    break;
+                case 12:
+                    scheduleService = postgradScheduleService;
+                    break;
+                default:
+                    var response = new CquSchedule.Models.Response<int>(localizationService.GetString("UsernameInvalid"));
+                    return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, 400);
             }
 
             try
@@ -378,7 +418,8 @@ namespace DL444.CquSchedule.Backend
         }
 
         private readonly IDataService dataService;
-        private readonly IScheduleService scheduleService;
+        private readonly IScheduleService undergradScheduleService;
+        private readonly IScheduleService postgradScheduleService;
         private readonly ILocalizationService localizationService;
     }
 }

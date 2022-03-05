@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Sockets;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DL444.CquSchedule.Backend.Exceptions;
@@ -15,14 +14,15 @@ namespace DL444.CquSchedule.Backend.Services
 {
     internal interface IScheduleService
     {
-        Task<string> SignInAsync(string username, string password);
-        Task<Schedule> GetScheduleAsync(string username, string termId, string token, TimeSpan offset);
-        Task<Term> GetTermAsync(string token, TimeSpan offset);
+        bool SupportsMultiterm { get; }
+        Task<ISignInContext> SignInAsync(string username, string password);
+        Task<Schedule> GetScheduleAsync(string username, string termId, ISignInContext signInContext, TimeSpan offset);
+        Task<Term> GetTermAsync(ISignInContext signInContext, TimeSpan offset);
     }
 
-    internal sealed class ScheduleService : IScheduleService
+    internal sealed class UndergraduateScheduleService : IScheduleService
     {
-        public ScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService, IExamStudentIdService examStudentIdService, IConfiguration config)
+        public UndergraduateScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService, IExamStudentIdService examStudentIdService, IConfiguration config)
         {
             this.httpClient = httpClient;
             this.encryptionService = encryptionService;
@@ -30,11 +30,13 @@ namespace DL444.CquSchedule.Backend.Services
             vacationServeDays = config.GetValue("Calendar:VacationServeDays", 3);
         }
 
-        public async Task<string> SignInAsync(string username, string password)
+        public bool SupportsMultiterm => true;
+
+        public async Task<ISignInContext> SignInAsync(string username, string password)
         {
             CookieContainer cookieContainer = new CookieContainer();
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://authserver.cqu.edu.cn/authserver/login?service=http://my.cqu.edu.cn/authserver/authentication/cas");
-            HttpResponseMessage response = await SendRequestFollowingRedirectsAsync(request, cookieContainer);
+            HttpResponseMessage response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
             string body = await response.Content.ReadAsStringAsync();
             SigninInfo info = GetSigninInfo(body);
             string encryptedPassword = await encryptionService.EncryptAsync(password, info.Key);
@@ -54,7 +56,7 @@ namespace DL444.CquSchedule.Backend.Services
 
             try
             {
-                response = await SendRequestFollowingRedirectsAsync(request, cookieContainer, new HashSet<string>()
+                response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer, new HashSet<string>()
                 {
                     "HTTP://AUTHSERVER.CQU.EDU.CN/AUTHSERVER/IMPROVEINFO.DO",
                     "HTTP://MY.CQU.EDU.CN/",
@@ -101,7 +103,7 @@ namespace DL444.CquSchedule.Backend.Services
 
             request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/authserver/oauth/authorize?client_id=enroll-prod&response_type=code&scope=all&state=&redirect_uri=https%3A%2F%2Fmy.cqu.edu.cn%2Fenroll%2Ftoken-index");
             request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
-            response = await SendRequestFollowingRedirectsAsync(request, cookieContainer);
+            response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
             Regex regex = new Regex("code=(.{6})");
             string code = regex.Match(response.RequestMessage.RequestUri.ToString()).Groups[1].Value;
 
@@ -115,19 +117,47 @@ namespace DL444.CquSchedule.Backend.Services
                 new KeyValuePair<string, string>("grant_type", "authorization_code")
             });
             request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
-            response = await SendRequestFollowingRedirectsAsync(request, cookieContainer);
+            response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
 
             regex = new Regex("\"access_token\":\"(.*?)\"");
             Match tokenMatch = regex.Match(await response.Content.ReadAsStringAsync());
             if (!tokenMatch.Success)
             {
-                throw new FormatException("Server did not return a token.");
+                AuthenticationException authEx = new AuthenticationException("Failed to authenticate user. Server did not return a token.")
+                {
+                    Result = AuthenticationResult.UnknownFailure,
+                };
+                throw authEx;
             }
-            return tokenMatch.Groups[1].Value;
+            return new UndergraduateSignInContext()
+            {
+                Token = tokenMatch.Groups[1].Value
+            };
         }
 
-        public async Task<Schedule> GetScheduleAsync(string username, string termId, string token, TimeSpan offset)
+        public async Task<Schedule> GetScheduleAsync(string username, string termId, ISignInContext signInContext, TimeSpan offset)
         {
+            string token;
+            if (signInContext is UndergraduateSignInContext undergradSignInContext)
+            {
+                if (undergradSignInContext.IsValid)
+                {
+                    token = undergradSignInContext.Token;
+                }
+                else
+                {
+                    throw new ArgumentException("Sign in context is invalid.");
+                }
+            }
+            else if (signInContext == null)
+            {
+                throw new ArgumentNullException(nameof(signInContext), "Sign in context is null.");
+            }
+            else
+            {
+                throw new ArgumentException("Sign in context is not for undergraduate.");
+            }
+
             Task<string> examStudentIdTask = examStudentIdService.GetExamStudentIdAsync(username);
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "https://my.cqu.edu.cn/api/enrollment/enrollment-batch/user-switch-batch");
             request.Content = new FormUrlEncodedContent(new[]
@@ -229,8 +259,29 @@ namespace DL444.CquSchedule.Backend.Services
             return schedule;
         }
 
-        public async Task<Term> GetTermAsync(string token, TimeSpan offset)
+        public async Task<Term> GetTermAsync(ISignInContext signInContext, TimeSpan offset)
         {
+            string token;
+            if (signInContext is UndergraduateSignInContext undergradSignInContext)
+            {
+                if (undergradSignInContext.IsValid)
+                {
+                    token = undergradSignInContext.Token;
+                }
+                else
+                {
+                    throw new ArgumentException("Sign in context is invalid.");
+                }
+            }
+            else if (signInContext == null)
+            {
+                throw new ArgumentNullException(nameof(signInContext), "Sign in context is null.");
+            }
+            else
+            {
+                throw new ArgumentException("Sign in context is not for undergraduate.");
+            }
+
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/api/resourceapi/session/info-detail");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await httpClient.SendAsync(request);
@@ -301,43 +352,6 @@ namespace DL444.CquSchedule.Backend.Services
             return (hint, term);
         }
 
-        private async Task<HttpResponseMessage> SendRequestFollowingRedirectsAsync(
-            HttpRequestMessage message,
-            CookieContainer cookieContainer,
-            HashSet<string> breakoutUris = null,
-            int maxRedirects = 10)
-        {
-            int redirects = 0;
-            HttpResponseMessage response = await httpClient.SendAsync(message);
-            if (response.Headers.TryGetValues("Set-Cookie", out IEnumerable<string> cookies))
-            {
-                foreach (string cookie in cookies)
-                {
-                    cookieContainer.SetCookie(cookie, response.RequestMessage.RequestUri);
-                }
-            }
-            while ((response.StatusCode == System.Net.HttpStatusCode.Redirect || response.StatusCode == System.Net.HttpStatusCode.Moved) && redirects < maxRedirects)
-            {
-                Uri location = response.Headers.Location;
-                if (breakoutUris != null && breakoutUris.Contains(location.GetLeftPart(UriPartial.Path).ToUpperInvariant()))
-                {
-                    break;
-                }
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, location);
-                request.Headers.Add("Cookie", new[] { cookieContainer.GetCookies(request.RequestUri) });
-                response = await httpClient.SendAsync(request);
-                if (response.Headers.TryGetValues("Set-Cookie", out cookies))
-                {
-                    foreach (string cookie in cookies)
-                    {
-                        cookieContainer.SetCookie(cookie, response.RequestMessage.RequestUri);
-                    }
-                }
-                redirects++;
-            }
-            return response;
-        }
-
         private static SigninInfo GetSigninInfo(string html)
         {
             Regex regex = new Regex("input type=\"hidden\" name=\"lt\" value=\"(.*?)\"");
@@ -389,103 +403,216 @@ namespace DL444.CquSchedule.Backend.Services
             public string Key { get; set; }
         }
 
-        private sealed class CookieContainer
-        {
-            public string GetCookies(string uri) => GetCookies(new Uri(uri));
-
-            public string GetCookies(Uri uri)
-            {
-                string domain = uri.Host.ToUpperInvariant();
-                string path = uri.AbsolutePath.ToUpperInvariant();
-                StringBuilder cookieBuilder = new StringBuilder();
-                foreach (CookieDomain cookieDomain in container.Keys)
-                {
-                    if (domain.EndsWith(cookieDomain.Domain, StringComparison.Ordinal) && path.StartsWith(cookieDomain.Path, StringComparison.Ordinal))
-                    {
-                        Dictionary<string, string> subcontainer = container[cookieDomain];
-                        foreach (KeyValuePair<string, string> cookie in subcontainer)
-                        {
-                            cookieBuilder.Append($"{(cookieBuilder.Length > 0 ? "; " : string.Empty)}{cookie.Key}={cookie.Value}");
-                        }
-                    }
-                }
-                return cookieBuilder.ToString();
-            }
-
-            public void SetCookie(string cookie, Uri defaultUri)
-            {
-                string domain = defaultUri.Host;
-                string path = defaultUri.AbsolutePath;
-                string[] parameters = cookie.Split(';');
-                if (parameters.Length == 0)
-                {
-                    return;
-                }
-
-                Regex paramRegex = new Regex("^(.*?)=(.*?)$");
-                Match match = paramRegex.Match(parameters[0].Trim());
-                if (!match.Success)
-                {
-                    return;
-                }
-                string key = match.Groups[1].Value;
-                string value = match.Groups[2].Value;
-
-                foreach (string parameter in parameters.Skip(1))
-                {
-                    match = paramRegex.Match(parameter.Trim());
-                    if (match.Success)
-                    {
-                        switch (match.Groups[1].Value.ToUpperInvariant())
-                        {
-                            case "DOMAIN":
-                                domain = match.Groups[2].Value;
-                                break;
-                            case "PATH":
-                                path = match.Groups[2].Value;
-                                break;
-                        }
-                    }
-                }
-
-                CookieDomain cookieDomain = new CookieDomain()
-                {
-                    Domain = domain.ToUpperInvariant(),
-                    Path = path.ToUpperInvariant()
-                };
-                if (!container.ContainsKey(cookieDomain))
-                {
-                    container.Add(cookieDomain, new Dictionary<string, string>());
-                }
-                Dictionary<string, string> subcontainer = container[cookieDomain];
-                if (subcontainer.ContainsKey(key))
-                {
-                    subcontainer[key] = value;
-                }
-                else
-                {
-                    subcontainer.Add(key, value);
-                }
-            }
-
-            private readonly Dictionary<CookieDomain, Dictionary<string, string>> container = new Dictionary<CookieDomain, Dictionary<string, string>>();
-        }
-
-        private struct CookieDomain : IEquatable<CookieDomain>
-        {
-            public string Domain { get; set; }
-            public string Path { get; set; }
-
-            public override bool Equals(object obj) => obj is CookieDomain domain && Equals(domain);
-            public bool Equals(CookieDomain domain) => Domain.Equals(domain.Domain, StringComparison.Ordinal) && Path.Equals(domain.Path, StringComparison.Ordinal);
-            public override int GetHashCode() => $"{Domain}-{Path}".GetHashCode();
-        }
-
         private readonly HttpClient httpClient;
         private readonly IUpstreamCredentialEncryptionService encryptionService;
         private readonly IExamStudentIdService examStudentIdService;
         private readonly int vacationServeDays;
         private static readonly Regex roomSimplifyRegex = new Regex("(室|机房|中心|分析系统|创新设计|展示与分析).*?-(.*?)$");
         private static readonly string[] expClassTypes = new[] { "上机", "实验" };
+    }
+
+    internal sealed class PostgraduateScheduleService : IScheduleService
+    {
+        public PostgraduateScheduleService(HttpClient httpClient) => this.httpClient = httpClient;
+
+        public bool SupportsMultiterm => false;
+
+        public async Task<ISignInContext> SignInAsync(string username, string password)
+        {
+            CookieContainer cookieContainer = new CookieContainer();
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://mis.cqu.edu.cn/mis/login.jsp");
+            request.Content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("userId", username),
+                new KeyValuePair<string, string>("password", password),
+                new KeyValuePair<string, string>("userType", "student"),
+            });
+            HttpResponseMessage response;
+            try
+            {
+                response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
+            }
+            catch (SocketException ex)
+            {
+                AuthenticationException authEx = new AuthenticationException("Failed to authenticate user. Server closed connection.", ex)
+                {
+                    Result = AuthenticationResult.UnknownFailure,
+                };
+                throw authEx;
+            }
+
+            string body = await response.Content.ReadAsStringAsync();
+            Regex resultRegex = new Regex("url=(.*?)\\.jsp");
+            Match match = resultRegex.Match(body);
+            AuthenticationResult authResult;
+            string exceptionMsg;
+            if (!match.Success)
+            {
+                authResult = AuthenticationResult.UnknownFailure;
+                exceptionMsg = "Failed to authenticate user. Server did not return a authentication result.";
+            }
+            else
+            {
+                switch (match.Groups[1].Value.ToUpperInvariant())
+                {
+                    case "STUDENT":
+                        authResult = AuthenticationResult.Success;
+                        exceptionMsg = default;
+                        break;
+                    case "WRONGPWD":
+                    case "NULLUSER":
+                        authResult = AuthenticationResult.IncorrectCredential;
+                        exceptionMsg = $"Failed to authenticate user. Reason: {match.Groups[1].Value}";
+                        break;
+                    default:
+                        authResult = AuthenticationResult.UnknownFailure;
+                        exceptionMsg = $"Failed to authenticate user. Reason: {match.Groups[1].Value}";
+                        break;
+                }
+            }
+
+            if (authResult != AuthenticationResult.Success)
+            {
+                AuthenticationException authEx = new AuthenticationException(exceptionMsg)
+                {
+                    Result = authResult,
+                };
+                throw authEx;
+            }
+
+            request = new HttpRequestMessage(HttpMethod.Get, "http://mis.cqu.edu.cn/mis/menu_student.jsp");
+            response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
+            body = await response.Content.ReadAsStringAsync();
+            Regex studentSerialRegex = new Regex("stuSerial=(.*?)\"");
+            match = studentSerialRegex.Match(body);
+            if (!match.Success)
+            {
+                AuthenticationException authEx = new AuthenticationException("Failed to authenticate user. Server did not return a student serial.")
+                {
+                    Result = AuthenticationResult.UnknownFailure,
+                };
+                throw authEx;
+            }
+            return new PostgraduateSignInContext()
+            {
+                StudentSerial = match.Groups[1].Value,
+                CookieContainer = cookieContainer
+
+            };
+        }
+
+        public async Task<Schedule> GetScheduleAsync(string username, string termId, ISignInContext signInContext, TimeSpan offset)
+        {
+            CookieContainer cookieContainer;
+            string studentSerial;
+            if (signInContext is PostgraduateSignInContext postgradSignInContext)
+            {
+                if (postgradSignInContext.IsValid)
+                {
+                    cookieContainer = postgradSignInContext.CookieContainer;
+                    studentSerial = postgradSignInContext.StudentSerial;
+                }
+                else
+                {
+                    throw new ArgumentException("Sign in context is invalid.");
+                }
+            }
+            else if (signInContext == null)
+            {
+                throw new ArgumentNullException(nameof(signInContext), "Sign in context is null.");
+            }
+            else
+            {
+                throw new ArgumentException("Sign in context is not for postgraduate.");
+            }
+
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"http://mis.cqu.edu.cn/mis/curricula/show_stu.jsp?stuSerial={studentSerial}");
+            HttpResponseMessage response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
+            string body = await response.Content.ReadAsStringAsync();
+
+            Regex scheduleSlotRegex = new Regex("<td class=mode5>(<font color='red'>)?(.*?)(</font>)?</td>");
+            MatchCollection scheduleSlotMatches = scheduleSlotRegex.Matches(body);
+            if (scheduleSlotMatches.Count != 7 * 5)
+            {
+                throw new UpstreamRequestException($"Upstream server returned unexpected number of schedule slots. Expect 35, actually {scheduleSlotMatches.Count}.");
+            }
+
+            Regex scheduleItemRegex = new Regex("名称：(.*?)<br>周次：(.*?)周<br>节次：(.*?)<br>教师：(.*?)<br>教室：(.*?)<br><br>");
+            Schedule schedule = new Schedule(username);
+            for (int session = 0; session < 5; session++)
+            {
+                for (int dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++)
+                {
+                    int index = session * 7 + dayOfWeek;
+                    string cellValue = scheduleSlotMatches[index].Groups[2].Value;
+                    if (cellValue.Equals("&nbsp;", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+                    MatchCollection scheduleItemMatches = scheduleItemRegex.Matches(cellValue);
+                    if (scheduleItemMatches.Count == 0)
+                    {
+                        throw new UpstreamRequestException($"Upstream server returned unexpected cell value: \"{scheduleSlotMatches.Count}\".");
+                    }
+                    foreach (Match scheduleItemMatch in scheduleItemMatches)
+                    {
+                        string name = scheduleItemMatch.Groups[1].Value;
+                        string weekNotation = scheduleItemMatch.Groups[2].Value;
+                        string sessionNotation = scheduleItemMatch.Groups[3].Value;
+                        string lecturer = scheduleItemMatch.Groups[4].Value;
+                        string room = scheduleItemMatch.Groups[5].Value;
+
+                        (List<int> weeks, ScheduleEntry scheduleEntry) = GetScheduleEntry(name, weekNotation, dayOfWeek + 1, sessionNotation, lecturer, room);
+                        weeks.ForEach(x => schedule.AddEntry(x, scheduleEntry));
+                    }
+                }
+            }
+
+            schedule.Weeks.Sort((x, y) => x.WeekNumber.CompareTo(y.WeekNumber));
+            return schedule;
+        }
+
+        public Task<Term> GetTermAsync(ISignInContext signInContext, TimeSpan offset) => Task.FromResult<Term>(default);
+
+        private static (List<int> weeks, ScheduleEntry entry) GetScheduleEntry(string name, string weekNotation, int dayOfWeek, string sessionNotation, string lecturer, string room)
+        {
+            ScheduleEntry scheduleEntry = new ScheduleEntry()
+            {
+                Name = name,
+                DayOfWeek = dayOfWeek,
+                Lecturer = lecturer,
+                Room = room,
+                SimplifiedRoom = room
+            };
+            (scheduleEntry.StartSession, scheduleEntry.EndSession) = ParseNumberSpanNotation(sessionNotation.Trim());
+
+            List<int> parsedWeeks = new List<int>();
+            string[] weekNotationFragments = weekNotation.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var weekNotationFragment in weekNotationFragments)
+            {
+                (int fragmentStart, int fragmentEnd) = ParseNumberSpanNotation(weekNotationFragment);
+                parsedWeeks.AddRange(Enumerable.Range(fragmentStart, fragmentEnd - fragmentStart + 1));
+            }
+
+            return (parsedWeeks, scheduleEntry);
+        }
+
+        private static (int start, int end) ParseNumberSpanNotation(string numberSpanNotation)
+        {
+            bool isStandaloneNumber = int.TryParse(numberSpanNotation, out int number);
+            if (isStandaloneNumber)
+            {
+                return (number, number);
+            }
+            Regex numberSpanRegex = new Regex("^(\\d.*)-(\\d.*)$");
+            Match match = numberSpanRegex.Match(numberSpanNotation);
+            if (!match.Success)
+            {
+                throw new ArgumentException($"Supplied string is not a valid number span notation: \"{numberSpanNotation}\"");
+            }
+            return (int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
+        }
+
+        private readonly HttpClient httpClient;
     }
 }

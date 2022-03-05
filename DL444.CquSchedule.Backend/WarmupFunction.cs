@@ -16,13 +16,13 @@ namespace DL444.CquSchedule.Backend
         public WarmupFunction(
             IConfiguration config,
             IDataService dataService,
-            IScheduleService scheduleService,
+            UndergraduateScheduleService undergradScheduleService,
             ITermService termService,
             IStoredCredentialEncryptionService storedEncryptionService)
         {
             warmupUser = config.GetValue<string>("Warmup:User");
             this.dataService = dataService;
-            this.scheduleService = scheduleService;
+            this.scheduleService = undergradScheduleService;
             this.termService = termService;
             this.storedEncryptionService = storedEncryptionService;
         }
@@ -46,15 +46,26 @@ namespace DL444.CquSchedule.Backend
                 try
                 {
                     User user = await dataService.GetUserAsync(warmupUser);
-                    user = await storedEncryptionService.DecryptAsync(user);
-                    string token = await scheduleService.SignInAsync(user.Username, user.Password);
-                    Term term = await termService.GetTermAsync(async ts =>
+                    if (user.UserType == UserType.Undergraduate)
                     {
-                        Term term = await scheduleService.GetTermAsync(token, TimeSpan.FromHours(8));
-                        await ts.SetTermAsync(term);
-                        return term;
-                    });
-                    await scheduleService.GetScheduleAsync(user.Username, term.SessionTermId, token, TimeSpan.FromHours(8));
+                        user = await storedEncryptionService.DecryptAsync(user);
+                        ISignInContext signInContext = await scheduleService.SignInAsync(user.Username, user.Password);
+                        Term term = await termService.GetTermAsync(async ts =>
+                        {
+                            if (!scheduleService.SupportsMultiterm)
+                            {
+                                return default;
+                            }
+                            Term term = await scheduleService.GetTermAsync(signInContext, TimeSpan.FromHours(8));
+                            await ts.SetTermAsync(term);
+                            return term;
+                        });
+                        await scheduleService.GetScheduleAsync(user.Username, term.SessionTermId, signInContext, TimeSpan.FromHours(8));
+                    }
+                    else
+                    {
+                        log.LogWarning("Warmup user is set to a postgraduate student, which is not supported.");
+                    }
                 }
                 catch (Exception ex)
                 {
