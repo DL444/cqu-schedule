@@ -41,33 +41,17 @@ namespace DL444.CquSchedule.Backend.Models
             {
                 return false;
             }
-            if ((Weeks == null) ^ (other.Weeks == null) || Weeks.Count != other.Weeks.Count)
+            if ((Weeks == null) ^ (other.Weeks == null) || (Exams == null) ^ (other.Exams == null))
             {
                 return false;
             }
-            if ((Exams == null) ^ (other.Exams == null) || Exams.Count != other.Exams.Count)
+            if (Weeks != null && !Weeks.SequenceEqual(other.Weeks))
             {
                 return false;
             }
-            if (Weeks != null)
+            if (Exams != null && !Exams.SequenceEqual(other.Exams))
             {
-                for (int i = 0; i < Weeks.Count; i++)
-                {
-                    if (Weeks[i] != other.Weeks[i])
-                    {
-                        return false;
-                    }
-                }
-            }
-            if (Exams != null)
-            {
-                for (int i = 0; i < Exams.Count; i++)
-                {
-                    if (Exams[i] != other.Exams[i])
-                    {
-                        return false;
-                    }
-                }
+                return false;
             }
             return true;
         }
