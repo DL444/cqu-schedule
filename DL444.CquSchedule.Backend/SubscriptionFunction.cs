@@ -179,6 +179,7 @@ namespace DL444.CquSchedule.Backend
                     scheduleService = undergradScheduleService;
                     break;
                 case 12:
+                case 13:
                     userType = UserType.Postgraduate;
                     scheduleService = postgradScheduleService;
                     break;
@@ -356,6 +357,7 @@ namespace DL444.CquSchedule.Backend
                     scheduleService = undergradScheduleService;
                     break;
                 case 12:
+                case 13:
                     scheduleService = postgradScheduleService;
                     break;
                 default:
