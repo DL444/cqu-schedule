@@ -13,7 +13,7 @@ namespace DL444.CquSchedule.Backend.Services
     {
         public string GetExamStudentId(string studentId)
         {
-            Aes aes = Aes.Create();
+            using Aes aes = Aes.Create();
             aes.Key = key;
             byte[] encrypted = aes.EncryptEcb(Encoding.ASCII.GetBytes(studentId), PaddingMode.PKCS7);
             return Convert.ToHexString(encrypted);
