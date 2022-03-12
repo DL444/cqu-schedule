@@ -15,44 +15,42 @@ namespace DL444.CquSchedule.Backend.Extensions
             HashSet<string> breakoutUris = null,
             int maxRedirects = 10)
         {
-            int redirects = 0;
-            string initialCookies = cookieContainer?.GetCookieHeader(message.RequestUri);
-            if (initialCookies != null && initialCookies.Length > 0)
+            int requestCount = 0;
+            HttpRequestMessage currentRequest = message;
+            HttpResponseMessage currentResponse;
+            do
             {
-                message.Headers.Add("Cookie", new[] { initialCookies });
-            }
-            HttpResponseMessage response = await httpClient.SendAsync(message);
-            if (response.Headers.TryGetValues("Set-Cookie", out IEnumerable<string> cookies))
-            {
-                foreach (string cookie in cookies)
+                string cookieHeader = cookieContainer.GetCookieHeader(currentRequest.RequestUri);
+                if (!string.IsNullOrEmpty(cookieHeader))
                 {
-                    cookieContainer.SetCookies(response.RequestMessage.RequestUri, cookie);
+                    currentRequest.Headers.Add("Cookie", new[] { cookieHeader });
                 }
-            }
-            while ((response.StatusCode == System.Net.HttpStatusCode.Redirect || response.StatusCode == System.Net.HttpStatusCode.Moved) && redirects < maxRedirects)
-            {
-                Uri location = response.Headers.Location;
+
+                currentResponse = await httpClient.SendAsync(currentRequest);
+                if (currentResponse.Headers.TryGetValues("Set-Cookie", out IEnumerable<string> cookies))
+                {
+                    foreach (string cookie in cookies)
+                    {
+                        cookieContainer.SetCookies(currentResponse.RequestMessage.RequestUri, cookie);
+                    }
+                }
+                requestCount++;
+
+                if ((currentResponse.StatusCode != System.Net.HttpStatusCode.Redirect && currentResponse.StatusCode != System.Net.HttpStatusCode.Moved) || requestCount > maxRedirects)
+                {
+                    break;
+                }
+
+                Uri location = currentResponse.Headers.Location;
                 if (breakoutUris != null && breakoutUris.Contains(location.GetLeftPart(UriPartial.Path).ToUpperInvariant()))
                 {
                     break;
                 }
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, location);
-                string cookieHeader = cookieContainer.GetCookieHeader(request.RequestUri);
-                if (!string.IsNullOrEmpty(cookieHeader))
-                {
-                    request.Headers.Add("Cookie", new[] { cookieHeader });
-                }
-                response = await httpClient.SendAsync(request);
-                if (response.Headers.TryGetValues("Set-Cookie", out cookies))
-                {
-                    foreach (string cookie in cookies)
-                    {
-                        cookieContainer.SetCookies(response.RequestMessage.RequestUri, cookie);
-                    }
-                }
-                redirects++;
+                currentRequest = new HttpRequestMessage(HttpMethod.Get, location);
             }
-            return response;
+            while (true);
+
+            return currentResponse;
         }
     }
 }
