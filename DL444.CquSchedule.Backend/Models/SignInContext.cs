@@ -1,4 +1,4 @@
-using DL444.CquSchedule.Backend.Extensions;
+using System.Net;
 
 namespace DL444.CquSchedule.Backend.Models
 {

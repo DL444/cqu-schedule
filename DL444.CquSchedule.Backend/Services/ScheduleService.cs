@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
@@ -52,7 +53,6 @@ namespace DL444.CquSchedule.Backend.Services
                 new KeyValuePair<string, string>("_eventId", "submit"),
                 new KeyValuePair<string, string>("rmShown", "1")
             });
-            request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
 
             try
             {
@@ -102,7 +102,6 @@ namespace DL444.CquSchedule.Backend.Services
             }
 
             request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/authserver/oauth/authorize?client_id=enroll-prod&response_type=code&scope=all&state=&redirect_uri=https%3A%2F%2Fmy.cqu.edu.cn%2Fenroll%2Ftoken-index");
-            request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
             response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
             Regex regex = new Regex("code=(.{6})");
             string code = regex.Match(response.RequestMessage.RequestUri.ToString()).Groups[1].Value;
@@ -116,7 +115,6 @@ namespace DL444.CquSchedule.Backend.Services
                 new KeyValuePair<string, string>("redirect_uri", "https://my.cqu.edu.cn/enroll/token-index"),
                 new KeyValuePair<string, string>("grant_type", "authorization_code")
             });
-            request.Headers.Add("Cookie", cookieContainer.GetCookies(request.RequestUri));
             response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
 
             regex = new Regex("\"access_token\":\"(.*?)\"");
