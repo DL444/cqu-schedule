@@ -30,15 +30,41 @@ namespace DL444.CquSchedule.Backend.Services
 
         private static string GetRandomString(int length)
         {
-            StringBuilder builder = new StringBuilder(length);
+            int byteCount = length * randomGroupLength;
+            byte[] randomBytes = RandomNumberGenerator.GetBytes(byteCount);
+
+            var builder = new StringBuilder(length);
             for (int i = 0; i < length; i++)
             {
-                builder.Append(charCandidates[random.Next(0, charCandidates.Length)]);
+                int groupStartIndex = i * randomGroupLength;
+                int charIndex = 0;
+                for (int j = 0; j < randomGroupLength; j++)
+                {
+                    charIndex += randomBytes[groupStartIndex + j];
+                }
+                builder.Append(charCandidates[charIndex % charCandidates.Length]);
             }
             return builder.ToString();
         }
 
-        private static readonly Random random = new Random((int)DateTime.UtcNow.Ticks);
+        private static int Gcd(int a, int b)
+        {
+            while (b != 0)
+            {
+                int t = b;
+                b = a % b;
+                a = t;
+            }
+            return a;
+        }
+
+        private static int Lcm(int a, int b)
+        {
+            int gcd = Gcd(a, b);
+            return (a / gcd) * b;
+        }
+
         private const string charCandidates = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678";
+        private static readonly int randomGroupLength = Lcm(byte.MaxValue + 1, charCandidates.Length) / (byte.MaxValue + 1);
     }
 }
