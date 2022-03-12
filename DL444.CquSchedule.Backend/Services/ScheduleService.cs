@@ -40,7 +40,7 @@ namespace DL444.CquSchedule.Backend.Services
             HttpResponseMessage response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
             string body = await response.Content.ReadAsStringAsync();
             SigninInfo info = GetSigninInfo(body);
-            string encryptedPassword = await encryptionService.EncryptAsync(password, info.Key);
+            string encryptedPassword = encryptionService.Encrypt(password, info.Key);
 
             request = new HttpRequestMessage(HttpMethod.Post, "http://authserver.cqu.edu.cn/authserver/login?service=http://my.cqu.edu.cn/authserver/authentication/cas");
             request.Content = new FormUrlEncodedContent(new[]
@@ -156,7 +156,6 @@ namespace DL444.CquSchedule.Backend.Services
                 throw new ArgumentException("Sign in context is not for undergraduate.");
             }
 
-            Task<string> examStudentIdTask = examStudentIdService.GetExamStudentIdAsync(username);
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "https://my.cqu.edu.cn/api/enrollment/enrollment-batch/user-switch-batch");
             request.Content = new FormUrlEncodedContent(new[]
             {
@@ -166,7 +165,7 @@ namespace DL444.CquSchedule.Backend.Services
             HttpResponseMessage response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
-            string examStudentId = await examStudentIdTask;
+            string examStudentId = examStudentIdService.GetExamStudentId(username);
             Task<HttpResponseMessage> examTask = httpClient.GetAsync($"https://my.cqu.edu.cn/api/exam/examTask/get-student-exam-list-outside?studentId={examStudentId}");
 
             request = new HttpRequestMessage(HttpMethod.Get, $"https://my.cqu.edu.cn/api/enrollment/timetable/student/{username}");
