@@ -36,13 +36,19 @@ namespace DL444.CquSchedule.Backend.Services
         public async Task<ISignInContext> SignInAsync(string username, string password)
         {
             CookieContainer cookieContainer = new CookieContainer();
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://authserver.cqu.edu.cn/authserver/login?service=http://my.cqu.edu.cn/authserver/authentication/cas");
+
+            // This side-effect is important. Sign in will fail without this request.
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/authserver/casLogin?redirect_uri=https://my.cqu.edu.cn/enroll/cas");
+            await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
+
+            request = new HttpRequestMessage(HttpMethod.Get, "https://sso.cqu.edu.cn/clientredirect?client_name=adapter&service=https://my.cqu.edu.cn/authserver/authentication/cas");
+            request.Headers.UserAgent.ParseAdd("Mozilla/5.0");
             HttpResponseMessage response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
             string body = await response.Content.ReadAsStringAsync();
             SigninInfo info = GetSigninInfo(body);
             string encryptedPassword = encryptionService.Encrypt(password, info.Key);
 
-            request = new HttpRequestMessage(HttpMethod.Post, "http://authserver.cqu.edu.cn/authserver/login?service=http://my.cqu.edu.cn/authserver/authentication/cas");
+            request = new HttpRequestMessage(HttpMethod.Post, response.RequestMessage.RequestUri);
             request.Content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("username", username),
