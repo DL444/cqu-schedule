@@ -37,27 +37,21 @@ namespace DL444.CquSchedule.Backend.Services
         {
             CookieContainer cookieContainer = new CookieContainer();
 
-            // This side-effect is important. Sign in will fail without this request.
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/authserver/casLogin?redirect_uri=https://my.cqu.edu.cn/enroll/cas");
-            await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
-
-            request = new HttpRequestMessage(HttpMethod.Get, "https://sso.cqu.edu.cn/clientredirect?client_name=adapter&service=https://my.cqu.edu.cn/authserver/authentication/cas");
-            request.Headers.UserAgent.ParseAdd("Mozilla/5.0");
             HttpResponseMessage response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
             string body = await response.Content.ReadAsStringAsync();
             SigninInfo info = GetSigninInfo(body);
-            string encryptedPassword = encryptionService.Encrypt(password, info.Key);
+            string encryptedPassword = encryptionService.Encrypt(password, info.Crypto);
 
-            request = new HttpRequestMessage(HttpMethod.Post, response.RequestMessage.RequestUri);
+            request = new HttpRequestMessage(HttpMethod.Post, "https://sso.cqu.edu.cn/login");
             request.Content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("username", username),
                 new KeyValuePair<string, string>("password", encryptedPassword),
-                new KeyValuePair<string, string>("lt", info.Lt),
-                new KeyValuePair<string, string>("dllt", "userNamePasswordLogin"),
+                new KeyValuePair<string, string>("type", "UsernamePassword"),
                 new KeyValuePair<string, string>("execution", info.Execution),
                 new KeyValuePair<string, string>("_eventId", "submit"),
-                new KeyValuePair<string, string>("rmShown", "1")
+                new KeyValuePair<string, string>("croypto", info.Crypto)
             });
 
             try
@@ -78,31 +72,35 @@ namespace DL444.CquSchedule.Backend.Services
                 throw authEx;
             }
 
-            if (response.RequestMessage.RequestUri.Host == "authserver.cqu.edu.cn")
+            if (!response.IsSuccessStatusCode)
             {
                 AuthenticationException ex = new AuthenticationException("Failed to authenticate user. Invalid credentials or captcha required.")
                 {
                     Result = AuthenticationResult.UnknownFailure
                 };
                 string responseContent = await response.Content.ReadAsStringAsync();
-                Regex errorRegex = new Regex("<span id=\"msg\" class=\"login_auth_error\">(.*?)</span>");
+                Regex errorRegex = new Regex("<div.*id=\"login-error-msg\">\\n\\s*?<span>(.*?)</span>", RegexOptions.CultureInvariant);
                 Match errorMatch = errorRegex.Match(responseContent);
                 if (errorMatch.Success)
                 {
-                    string errorDescription = errorMatch.Groups[1].Value;
-                    ex.ErrorDescription = errorDescription;
-                    if (errorDescription.Contains("密码", StringComparison.Ordinal) || errorDescription.Contains("password", StringComparison.Ordinal))
+                    string errorCode = errorMatch.Groups[1].Value;
+                    ex.ErrorDescription = errorCode;
+                    if (errorCode.Equals("1030027", StringComparison.Ordinal))
                     {
                         ex.Result = AuthenticationResult.IncorrectCredential;
                     }
-                    else if (errorDescription.Contains("验证码", StringComparison.Ordinal) || errorDescription.Contains("verification", StringComparison.Ordinal))
+                    else if (errorCode.Equals("1030031", StringComparison.Ordinal))
                     {
-                        ex.Result = AuthenticationResult.CaptchaRequired;
+                        ex.Result = AuthenticationResult.IncorrectCredential;
                     }
-                }
-                else if (response.Headers.Location != null && response.Headers.Location.ToString().Contains("IMPROVEINFO.DO", StringComparison.OrdinalIgnoreCase))
-                {
-                    ex.Result = AuthenticationResult.InfoRequired;
+                    else if (errorCode.Equals("1410041", StringComparison.Ordinal))
+                    {
+                        ex.Result = AuthenticationResult.IncorrectCredential;
+                    }
+                    else if (errorCode.Equals("1410040", StringComparison.Ordinal))
+                    {
+                        ex.Result = AuthenticationResult.IncorrectCredential;
+                    }
                 }
                 throw ex;
             }
@@ -357,35 +355,26 @@ namespace DL444.CquSchedule.Backend.Services
 
         private static SigninInfo GetSigninInfo(string html)
         {
-            Regex regex = new Regex("input type=\"hidden\" name=\"lt\" value=\"(.*?)\"");
+            Regex regex = new Regex("p id=\"login-page-flowkey\">(.*?)<");
             Match match = regex.Match(html);
-            if (!match.Success)
-            {
-                throw new ArgumentException("Supplied HTML is not valid. Lt not found.");
-            }
-            string lt = match.Groups[1].Value;
-
-            regex = new Regex("input type=\"hidden\" name=\"execution\" value=\"(.*?)\"");
-            match = regex.Match(html);
             if (!match.Success)
             {
                 throw new ArgumentException("Supplied HTML is not valid. Execution not found.");
             }
             string exec = match.Groups[1].Value;
 
-            regex = new Regex("var pwdDefaultEncryptSalt = \"(.*?)\"");
+            regex = new Regex("p id=\"login-croypto\">(.*?)<");
             match = regex.Match(html);
             if (!match.Success)
             {
-                throw new ArgumentException("Supplied HTML is not valid. Default salt not found.");
+                throw new ArgumentException("Supplied HTML is not valid. Crypto not found.");
             }
-            string key = match.Groups[1].Value;
+            string crypto = match.Groups[1].Value;
 
             return new SigninInfo()
             {
-                Lt = lt,
                 Execution = exec,
-                Key = key
+                Crypto = crypto
             };
         }
 
@@ -401,9 +390,8 @@ namespace DL444.CquSchedule.Backend.Services
 
         private struct SigninInfo
         {
-            public string Lt { get; set; }
             public string Execution { get; set; }
-            public string Key { get; set; }
+            public string Crypto { get; set; }
         }
 
         private readonly HttpClient httpClient;
