@@ -160,6 +160,10 @@ namespace DL444.CquSchedule.Backend
                 {
                     log.LogError(ex, "User authentication failed. Server closed connection.");
                 }
+                else if (ex.Result == AuthenticationResult.ConnectionFailed)
+                {
+                    log.LogError(ex, "User authentication failed. Connection failure.");
+                }
                 else if (ex.Result != AuthenticationResult.IncorrectCredential && ex.Result != AuthenticationResult.InfoRequired)
                 {
                     log.LogError(ex, "User authentication failed. Probably captcha required.");

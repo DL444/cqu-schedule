@@ -211,6 +211,10 @@ namespace DL444.CquSchedule.Backend
                 {
                     message = localizationService.GetString("InfoRequired");
                 }
+                else if (ex.Result == AuthenticationResult.ConnectionFailed)
+                {
+                    message = localizationService.GetString("ServiceErrorConnectionFailure");
+                }
                 else if (ex.InnerException is SocketException)
                 {
                     message = localizationService.GetString("ServerDeniedConnection");
@@ -384,6 +388,10 @@ namespace DL444.CquSchedule.Backend
                 else if (ex.Result == AuthenticationResult.InfoRequired)
                 {
                     message = localizationService.GetString("InfoRequired");
+                }
+                else if (ex.Result == AuthenticationResult.ConnectionFailed)
+                {
+                    message = localizationService.GetString("ServiceErrorConnectionFailure");
                 }
                 else if (ex.InnerException is SocketException)
                 {

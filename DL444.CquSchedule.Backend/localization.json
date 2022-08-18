@@ -16,7 +16,8 @@
                 "ServerDeniedConnection": "服务暂时无法登录到教务系统，建议你稍后在白天重试。你可以在手机流量等非校园网环境中登录本科生教务系统或研究生 MIS 系统确认系统状态",
                 "UserDeleteSuccess": "订阅数据已删除",
                 "OnVacationCalendarMayBeEmpty": "当前在假期中，课程可能为空或有误。新学期课程将在开学前 {0} 天左右展示",
-                "ServiceErrorCannotGetStatus": "服务存在问题，暂时无法获取状态信息"
+                "ServiceErrorCannotGetStatus": "服务存在问题，暂时无法获取状态信息",
+                "ServiceErrorConnectionFailure": "服务暂时无法访问教务系统，请稍后再试"
             }
         }
     }

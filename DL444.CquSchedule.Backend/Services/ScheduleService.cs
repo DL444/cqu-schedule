@@ -39,6 +39,14 @@ namespace DL444.CquSchedule.Backend.Services
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/authserver/casLogin?redirect_uri=https://my.cqu.edu.cn/enroll/cas");
             HttpResponseMessage response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                throw new AuthenticationException("Failed to authenticate user. First page access forbidden.")
+                {
+                    Result = AuthenticationResult.ConnectionFailed
+                };
+            }
+
             string body = await response.Content.ReadAsStringAsync();
             SigninInfo info = GetSigninInfo(body);
             string encryptedPassword = encryptionService.Encrypt(password, info.Crypto);
