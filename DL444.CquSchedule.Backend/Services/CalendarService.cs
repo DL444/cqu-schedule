@@ -102,7 +102,7 @@ namespace DL444.CquSchedule.Backend.Services
                 Summary = entry.Name,
                 DtStart = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, startTime),
                 DtEnd = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, endTime),
-                Location = entry.SimplifiedRoom,
+                Location = string.IsNullOrWhiteSpace(entry.SimplifiedRoom) ? null : entry.SimplifiedRoom,
                 Description = descriptionBuilder.ToString(),
                 Alarms = {
                     new Alarm()

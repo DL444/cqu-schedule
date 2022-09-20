@@ -536,7 +536,7 @@ namespace DL444.CquSchedule.Backend.Services
                 throw new UpstreamRequestException($"Upstream server returned unexpected number of schedule slots. Expect 35, actually {scheduleSlotMatches.Count}.");
             }
 
-            Regex scheduleItemRegex = new Regex("名称：(.*?)<br>周次：(.*?)周<br>节次：(.*?)<br>教师：(.*?)<br>教室：(.*?)<br><br>");
+            Regex scheduleItemRegex = new Regex("名称：(.*?)<br>周次：(.*?)周<br>节次：(.*?)<br>教师：(.*?)<br>(?:教室：(.*?)<br>)?(?:平台：(.*?)<br>)?.*<br>");
             Schedule schedule = new Schedule(username);
             for (int session = 0; session < 5; session++)
             {
@@ -560,6 +560,10 @@ namespace DL444.CquSchedule.Backend.Services
                         string sessionNotation = scheduleItemMatch.Groups[3].Value;
                         string lecturer = scheduleItemMatch.Groups[4].Value;
                         string room = scheduleItemMatch.Groups[5].Value;
+                        if (string.IsNullOrWhiteSpace(room))
+                        {
+                            room = scheduleItemMatch.Groups[6].Value;
+                        }
 
                         (List<int> weeks, ScheduleEntry scheduleEntry) = GetScheduleEntry(name, weekNotation, dayOfWeek + 1, sessionNotation, lecturer, room);
                         weeks.ForEach(x => schedule.AddEntry(x, scheduleEntry));
