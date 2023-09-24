@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using DL444.CquSchedule.Backend.Exceptions;
 using DL444.CquSchedule.Backend.Extensions;
@@ -289,7 +290,7 @@ namespace DL444.CquSchedule.Backend
             {
                 Username = credential.Username,
                 Password = credential.Password,
-                SubscriptionId = Guid.NewGuid().ToString(),
+                SubscriptionId = CreateSubscriptionId(),
                 UserType = userType
             };
             user = await storedEncryptionService.EncryptAsync(user);
@@ -313,6 +314,34 @@ namespace DL444.CquSchedule.Backend
                 var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
                 return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
             }
+        }
+
+        private static string CreateSubscriptionId()
+        {
+            Span<byte> rngBuffer = stackalloc byte[16];
+            Span<char> base64Buffer = stackalloc char[24];
+            RandomNumberGenerator.Fill(rngBuffer);
+            bool success = Convert.TryToBase64Chars(rngBuffer, base64Buffer, out _);
+            if (!success)
+            {
+                // TODO: throw System.Diagnostics.UnreachableException instead once migrated to .NET 8.
+                throw new InvalidOperationException("Internal buffer overflow creating subscription ID.");
+            }
+
+            // We need a URL-safe Base64 string as specified by RFC 4648 Section 5, which replaces two characters and removes padding.
+            // This is fine even though .NET currently does not natively support this flavor, since we only use the string opaquely and never decode.
+            int index = base64Buffer.IndexOfAny('+', '/', '=');
+            while (index > 0 && index < 22)
+            {
+                base64Buffer[index] = base64Buffer[index] switch
+                {
+                    '+' => '-',
+                    '/' => '_',
+                    _ => throw new InvalidOperationException("Unexpected character encounter generating URI-safe Base64 string.")
+                };
+                index = base64Buffer.IndexOfAny('+', '/', '=');
+            }
+            return new string(base64Buffer[..22]);
         }
 
         private readonly IDataService dataService;
