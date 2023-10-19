@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using DL444.CquSchedule.Backend.Exceptions;
 using DL444.CquSchedule.Backend.Extensions;
@@ -64,7 +65,7 @@ namespace DL444.CquSchedule.Backend
             try
             {
                 User user = await userTask;
-                if (!user.SubscriptionId.Equals(subscriptionId, StringComparison.Ordinal))
+                if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(user.SubscriptionId), Encoding.UTF8.GetBytes(subscriptionId)))
                 {
                     return new OkObjectResult(calendarService.GetEmptyCalendar());
                 }
