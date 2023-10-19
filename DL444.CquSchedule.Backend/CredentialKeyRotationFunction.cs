@@ -4,14 +4,14 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Azure.Identity;
-using Azure.Messaging.EventGrid;
 using Azure.Security.KeyVault.Keys;
 using Azure.Security.KeyVault.Keys.Cryptography;
+using DL444.CquSchedule.Backend.Extensions;
 using DL444.CquSchedule.Backend.Services;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.EventGrid;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Polly;
@@ -40,7 +40,7 @@ namespace DL444.CquSchedule.Backend
                 .WaitAndRetryAsync(backoff);
         }
 
-        [FunctionName("CredentialKeyRotation")]
+        [Function("CredentialKeyRotation")]
         public Task StartRotationAsync([TimerTrigger("0 0 15 * * 0")] TimerInfo timer)
         {
             var options = new CreateRsaKeyOptions(keyName);
@@ -50,18 +50,19 @@ namespace DL444.CquSchedule.Backend
             return keyClient.CreateRsaKeyAsync(options);
         }
 
-        [FunctionName("PostCredentialKeyRotation_Orchestrator")]
+        [Function("PostCredentialKeyRotation_Orchestrator")]
         public async Task RunOrchestratorAsync(
-            [OrchestrationTrigger] IDurableOrchestrationContext context)
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var users = context.GetInput<List<string>>();
             var tasks = users.Select(user => context.CallActivityAsync("PostCredentialKeyRotation_Activity", user));
             await Task.WhenAll(tasks);
         }
 
-        [FunctionName("PostCredentialKeyRotation_Activity")]
-        public async Task RotateKeyAsync([ActivityTrigger] string username, ILogger log)
+        [Function("PostCredentialKeyRotation_Activity")]
+        public async Task RotateKeyAsync([ActivityTrigger] string username, FunctionContext ctx)
         {
+            ILogger log = ctx.GetFunctionNamedLogger();
             User user;
             try
             {
@@ -107,34 +108,38 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
-        [FunctionName("PostCredentialKeyRotation_Client")]
+        [Function("PostCredentialKeyRotation_Client")]
         public async Task StartPostRotationAsync(
             [EventGridTrigger] EventGridEvent eventGridEvent,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
+            [DurableClient] DurableTaskClient starter,
+            FunctionContext ctx)
         {
+            ILogger log = ctx.GetFunctionNamedLogger();
             if (!eventGridEvent.EventType.Equals("Microsoft.KeyVault.KeyNewVersionCreated", StringComparison.Ordinal))
             {
                 log.LogError("Event with unsupported type received. Type {eventType}", eventGridEvent.EventType);
                 return;
             }
-            if (eventGridEvent.Data is not BinaryData obj)
-            {
-                log.LogError("Event data is null.");
-                return;
-            }
-            var data = obj.ToObjectFromJson<EventData>();
-            if (!data.ObjectName.Equals(keyName, StringComparison.Ordinal))
+            if (!string.Equals(eventGridEvent.Data.ObjectName, keyName, StringComparison.Ordinal))
             {
                 return;
             }
-
-            clientContainerService.Client = new CryptographyClient(new Uri(data.Id), new DefaultAzureCredential());
+            if (string.IsNullOrEmpty(eventGridEvent.Data.Id))
+            {
+                return;
+            }
+            clientContainerService.Client = new CryptographyClient(new Uri(eventGridEvent.Data.Id), new DefaultAzureCredential());
             List<string> users = await dataService.GetUserIdsAsync();
-            await starter.StartNewAsync("PostCredentialKeyRotation_Orchestrator", null, users);
+            await starter.ScheduleNewOrchestrationInstanceAsync("PostCredentialKeyRotation_Orchestrator", users);
         }
 
-        private struct EventData
+        internal sealed class EventGridEvent
+        {
+            public string EventType { get; set; }
+            public EventData Data { get; set; }
+        }
+
+        internal struct EventData
         {
             public string ObjectName { get; set; }
             public string Id { get; set; }

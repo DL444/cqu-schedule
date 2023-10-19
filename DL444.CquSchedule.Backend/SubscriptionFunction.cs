@@ -9,11 +9,9 @@ using DL444.CquSchedule.Backend.Extensions;
 using DL444.CquSchedule.Backend.Models;
 using DL444.CquSchedule.Backend.Services;
 using DL444.CquSchedule.Models;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using User = DL444.CquSchedule.Backend.Models.User;
 
@@ -28,35 +26,33 @@ namespace DL444.CquSchedule.Backend
             this.calendarService = calendarService;
         }
 
-        [FunctionName("Subscription_Get")]
-        public Task<IActionResult> RunGetAsync(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "subscription/{username}/{subscriptionId}")] HttpRequest req,
+        [Function("Subscription_Get")]
+        public Task<HttpResponseData> RunGetAsync(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "subscription/{username}/{subscriptionId}")] HttpRequestData req,
             string username,
-            string subscriptionId,
-            ILogger log)
-            => GetScheduleAsync(username, subscriptionId, CalenderEventCategories.All, log);
+            string subscriptionId)
+            => GetScheduleAsync(req, username, subscriptionId, CalenderEventCategories.All);
 
-        [FunctionName("Course_Get")]
-        public Task<IActionResult> RunGetCoursesAsync(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "course/{username}/{subscriptionId}")] HttpRequest req,
+        [Function("Course_Get")]
+        public Task<HttpResponseData> RunGetCoursesAsync(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "course/{username}/{subscriptionId}")] HttpRequestData req,
             string username,
-            string subscriptionId,
-            ILogger log)
-            => GetScheduleAsync(username, subscriptionId, CalenderEventCategories.Courses, log);
+            string subscriptionId)
+            => GetScheduleAsync(req, username, subscriptionId, CalenderEventCategories.Courses);
 
-        [FunctionName("Exam_Get")]
-        public Task<IActionResult> RunGetExamsAsync(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "exam/{username}/{subscriptionId}")] HttpRequest req,
+        [Function("Exam_Get")]
+        public Task<HttpResponseData> RunGetExamsAsync(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "exam/{username}/{subscriptionId}")] HttpRequestData req,
             string username,
-            string subscriptionId,
-            ILogger log)
-            => GetScheduleAsync(username, subscriptionId, CalenderEventCategories.Exams, log);
+            string subscriptionId)
+            => GetScheduleAsync(req, username, subscriptionId, CalenderEventCategories.Exams);
 
-        private async Task<IActionResult> GetScheduleAsync(string username, string subscriptionId, CalenderEventCategories eventCategories, ILogger log)
+        private async Task<HttpResponseData> GetScheduleAsync(HttpRequestData req, string username, string subscriptionId, CalenderEventCategories eventCategories)
         {
+            ILogger log = req.FunctionContext.GetFunctionNamedLogger();
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(subscriptionId))
             {
-                return new BadRequestResult();
+                return req.CreateResponse(HttpStatusCode.BadRequest);
             }
 
             Task<Term> termTask = termService.GetTermAsync();
@@ -67,35 +63,25 @@ namespace DL444.CquSchedule.Backend
                 User user = await userTask;
                 if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(user.SubscriptionId), Encoding.UTF8.GetBytes(subscriptionId)))
                 {
-                    return new ContentResult()
-                    {
-                        Content = calendarService.GetEmptyCalendar(),
-                        ContentType = "text/calendar; charset=utf-8",
-                        StatusCode = 200
-                    };
+                    return req.CreateStringContentResponse(HttpStatusCode.OK, calendarService.GetEmptyCalendar(), calendarContentType);
                 }
             }
             catch (CosmosException ex)
             {
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                 {
-                    return new ContentResult()
-                    {
-                        Content = calendarService.GetEmptyCalendar(),
-                        ContentType = "text/calendar; charset=utf-8",
-                        StatusCode = 200
-                    };
+                    return req.CreateStringContentResponse(HttpStatusCode.OK, calendarService.GetEmptyCalendar(), calendarContentType);
                 }
                 else
                 {
                     log.LogError(ex, "Failed to fetch user info from database. Status: {status}", ex.StatusCode);
-                    return new StatusCodeResult(503);
+                    return req.CreateResponse(HttpStatusCode.ServiceUnavailable);
                 }
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to fetch user info from database.");
-                return new StatusCodeResult(503);
+                return req.CreateResponse(HttpStatusCode.ServiceUnavailable);
             }
 
             try
@@ -103,52 +89,43 @@ namespace DL444.CquSchedule.Backend
                 Schedule schedule = await scheduleTask;
                 if (schedule.RecordStatus == RecordStatus.StaleAuthError)
                 {
-                    return new ContentResult()
-                    {
-                        Content = calendarService.GetEmptyCalendar(),
-                        ContentType = "text/calendar; charset=utf-8",
-                        StatusCode = 200
-                    };
+                    return req.CreateStringContentResponse(HttpStatusCode.OK, calendarService.GetEmptyCalendar(), calendarContentType);
                 }
                 else
                 {
                     try
                     {
                         Term term = await termTask;
-                        return new ContentResult()
-                        {
-                            Content = calendarService.GetCalendar(term, schedule, eventCategories),
-                            ContentType = "text/calendar; charset=utf-8",
-                            StatusCode = 200
-                        };
+                        return req.CreateStringContentResponse(HttpStatusCode.OK, calendarService.GetCalendar(term, schedule, eventCategories), calendarContentType);
                     }
                     catch (CosmosException ex)
                     {
                         log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.StatusCode);
-                        return new StatusCodeResult(503);
+                        return req.CreateResponse(HttpStatusCode.ServiceUnavailable);
                     }
                     catch (Exception ex)
                     {
                         log.LogError(ex, "Failed to fetch term info.");
-                        return new StatusCodeResult(503);
+                        return req.CreateResponse(HttpStatusCode.ServiceUnavailable);
                     }
                 }
             }
             catch (CosmosException ex)
             {
                 log.LogError(ex, "Failed to fetch user info from database. Status: {status}", ex.StatusCode);
-                return new StatusCodeResult(503);
+                return req.CreateResponse(HttpStatusCode.ServiceUnavailable);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to fetch user info from database.");
-                return new StatusCodeResult(503);
+                return req.CreateResponse(HttpStatusCode.ServiceUnavailable);
             }
         }
 
         private readonly IDataService dataService;
         private readonly ITermService termService;
         private readonly ICalendarService calendarService;
+        private readonly string calendarContentType = "text/calendar; charset=utf-8";
     }
 
     internal sealed class SubscriptionPostFunction
@@ -171,20 +148,19 @@ namespace DL444.CquSchedule.Backend
             this.localizationService = localizationService;
         }
 
-        [FunctionName("Subscription_Post")]
-        public async Task<IActionResult> RunPostAsync(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = "subscription")] HttpRequest req,
-            ILogger log)
+        [Function("Subscription_Post")]
+        public async Task<HttpResponseData> RunPostAsync([HttpTrigger(AuthorizationLevel.Function, "post", Route = "subscription")] HttpRequestData req)
         {
+            ILogger log = req.FunctionContext.GetFunctionNamedLogger();
             Credential credential = await req.GetCredentialAsync();
             if (credential == null)
             {
-                return new BadRequestResult();
+                return req.CreateResponse(HttpStatusCode.BadRequest);
             }
             else if (!credential.Username.StartsWith("20", StringComparison.Ordinal))
             {
                 var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UsernameInvalid"));
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 400);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.BadRequest);
             }
 
             UserType userType;
@@ -202,7 +178,7 @@ namespace DL444.CquSchedule.Backend
                     break;
                 default:
                     var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("UsernameInvalid"));
-                    return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 400);
+                    return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.BadRequest);
             }
 
             ISignInContext signInContext;
@@ -215,7 +191,7 @@ namespace DL444.CquSchedule.Backend
             catch (AuthenticationException ex)
             {
                 string message;
-                var statusCode = 401;
+                var statusCode = HttpStatusCode.Unauthorized;
                 if (ex.Result == AuthenticationResult.IncorrectCredential)
                 {
                     message = localizationService.GetString("CredentialError");
@@ -240,16 +216,16 @@ namespace DL444.CquSchedule.Backend
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
                     message = localizationService.GetString("AuthErrorCannotCreate");
-                    statusCode = 503;
+                    statusCode = HttpStatusCode.ServiceUnavailable;
                 }
                 var response = new CquSchedule.Models.Response<IcsSubscription>(message);
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, statusCode);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response, statusCode);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to authenticate user.");
                 var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.ServiceUnavailable);
             }
 
             try
@@ -270,13 +246,13 @@ namespace DL444.CquSchedule.Backend
             {
                 log.LogError(ex, "Failed to fetch term info from database. Status {status}", ex.StatusCode);
                 var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.ServiceUnavailable);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to fetch term info.");
                 var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.ServiceUnavailable);
             }
 
             try
@@ -287,7 +263,7 @@ namespace DL444.CquSchedule.Backend
             {
                 log.LogError(ex, "Failed to fetch schedule info.");
                 var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.ServiceUnavailable);
             }
 
             int vacationServeDays = calendarService.VacationCalendarServeDays;
@@ -299,7 +275,7 @@ namespace DL444.CquSchedule.Backend
             {
                 string ics = calendarService.GetCalendar(term, schedule);
                 var response = new CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(null, ics), successMessage);
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response);
             }
 
             User user = new User()
@@ -316,19 +292,19 @@ namespace DL444.CquSchedule.Backend
                 await dataService.SetUserAsync(user);
                 await dataService.SetScheduleAsync(schedule);
                 var response = new CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(user.SubscriptionId, null), successMessage);
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response);
             }
             catch (CosmosException ex)
             {
                 log.LogError(ex, "Failed to update database. Status: {status}", ex.StatusCode);
                 var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.ServiceUnavailable);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to update database.");
                 var response = new CquSchedule.Models.Response<IcsSubscription>(localizationService.GetString("ServiceErrorCannotCreate"));
-                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(response, 503);
+                return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.ServiceUnavailable);
             }
         }
 
@@ -383,20 +359,19 @@ namespace DL444.CquSchedule.Backend
             this.localizationService = localizationService;
         }
 
-        [FunctionName("Subscription_Delete")]
-        public async Task<IActionResult> RunDeleteAsync(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = "subscription/delete")] HttpRequest req,
-            ILogger log)
+        [Function("Subscription_Delete")]
+        public async Task<HttpResponseData> RunDeleteAsync([HttpTrigger(AuthorizationLevel.Function, "post", Route = "subscription/delete")] HttpRequestData req)
         {
+            ILogger log = req.FunctionContext.GetFunctionNamedLogger();
             Credential credential = await req.GetCredentialAsync();
             if (credential == null)
             {
-                return new BadRequestResult();
+                return req.CreateResponse(HttpStatusCode.BadRequest);
             }
             else if (!credential.Username.StartsWith("20", StringComparison.Ordinal))
             {
                 var response = new CquSchedule.Models.Response<int>(localizationService.GetString("UsernameInvalid"));
-                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, 400);
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.BadRequest);
             }
 
             IScheduleService scheduleService;
@@ -411,7 +386,7 @@ namespace DL444.CquSchedule.Backend
                     break;
                 default:
                     var response = new CquSchedule.Models.Response<int>(localizationService.GetString("UsernameInvalid"));
-                    return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, 400);
+                    return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.BadRequest);
             }
 
             try
@@ -421,7 +396,7 @@ namespace DL444.CquSchedule.Backend
             catch (AuthenticationException ex)
             {
                 string message;
-                var statusCode = 401;
+                HttpStatusCode statusCode = HttpStatusCode.Unauthorized;
                 if (ex.Result == AuthenticationResult.IncorrectCredential)
                 {
                     message = localizationService.GetString("CredentialError");
@@ -446,29 +421,29 @@ namespace DL444.CquSchedule.Backend
                 {
                     log.LogError(ex, "Unexpected response while authenticating user.");
                     message = localizationService.GetString("AuthErrorCannotDelete");
-                    statusCode = 503;
+                    statusCode = HttpStatusCode.ServiceUnavailable;
                 }
                 var response = new DL444.CquSchedule.Models.Response<int>(message);
-                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, statusCode);
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(req, response, statusCode);
             }
             catch (Exception ex)
             {
                 log.LogError(ex, "Failed to authenticate user.");
                 var response = new DL444.CquSchedule.Models.Response<int>(localizationService.GetString("ServiceErrorCannotDelete"));
-                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, 503);
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.ServiceUnavailable);
             }
 
             bool success = await dataService.DeleteUserAsync(credential.Username);
             if (success)
             {
                 var response = new DL444.CquSchedule.Models.Response<int>(true, default, localizationService.GetString("UserDeleteSuccess"));
-                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response);
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(req, response);
             }
             else
             {
                 log.LogError("Failed to delete user. Username: {username}", credential.Username);
                 var response = new DL444.CquSchedule.Models.Response<int>(localizationService.GetString("ServiceErrorCannotDelete"));
-                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(response, 503);
+                return StatusOnlyResponseSerializerContext.Default.GetSerializedResponse(req, response, HttpStatusCode.ServiceUnavailable);
             }
         }
 

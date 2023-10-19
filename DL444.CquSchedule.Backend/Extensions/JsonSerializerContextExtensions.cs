@@ -1,10 +1,11 @@
 using System.Buffers;
 using System.IO;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Functions.Worker.Http;
 
 namespace DL444.CquSchedule.Backend.Extensions
 {
@@ -30,14 +31,7 @@ namespace DL444.CquSchedule.Backend.Extensions
         public static ValueTask<T> DeserializeFromStringAsync<T>(this IJsonSerializerContextTypeInfoSource<T> jsonSerializerContext, Stream jsonStream)
             => JsonSerializer.DeserializeAsync<T>(jsonStream, jsonSerializerContext.TypeInfo);
 
-        public static IActionResult GetSerializedResponse<T>(this IJsonSerializerContextTypeInfoSource<T> jsonSerializerContext, T obj, int statusCode = 200)
-        {
-            return new ContentResult()
-            {
-                Content = jsonSerializerContext.SerializeToString(obj),
-                ContentType = "application/json",
-                StatusCode = statusCode
-            };
-        }
+        public static HttpResponseData GetSerializedResponse<T>(this IJsonSerializerContextTypeInfoSource<T> jsonSerializerContext, HttpRequestData request, T obj, HttpStatusCode statusCode = HttpStatusCode.OK)
+            => request.CreateStringContentResponse(statusCode, jsonSerializerContext.SerializeToString(obj), "application/json");
     }
 }

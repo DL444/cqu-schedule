@@ -1,11 +1,11 @@
 using System;
+using System.Net;
 using System.Threading.Tasks;
+using DL444.CquSchedule.Backend.Extensions;
 using DL444.CquSchedule.Backend.Models;
 using DL444.CquSchedule.Backend.Services;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -27,14 +27,13 @@ namespace DL444.CquSchedule.Backend
             this.storedEncryptionService = storedEncryptionService;
         }
 
-        [FunctionName("Warmup")]
-        public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
-            ILogger log)
+        [Function("Warmup")]
+        public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequestData req)
         {
+            ILogger log = req.FunctionContext.GetFunctionNamedLogger();
             if (warmupExecuted)
             {
-                return new OkResult();
+                return req.CreateResponse(HttpStatusCode.OK);
             }
 
             if (!string.IsNullOrEmpty(warmupUser))
@@ -77,7 +76,7 @@ namespace DL444.CquSchedule.Backend
                 log.LogInformation("Warmup user is not set. Setting one can probably improve responsiveness of later requests.");
             }
 
-            return new OkResult();
+            return req.CreateResponse(HttpStatusCode.OK);
         }
 
         private static bool warmupExecuted;

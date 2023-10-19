@@ -1,14 +1,15 @@
-﻿using System.Text.Json;
+﻿using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using DL444.CquSchedule.Backend.Models;
 using DL444.CquSchedule.Models;
-using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.Functions.Worker.Http;
 
 namespace DL444.CquSchedule.Backend.Extensions
 {
-    internal static class HttpRequestExtensions
+    internal static class HttpRequestDataExtensions
     {
-        public static async Task<Credential> GetCredentialAsync(this HttpRequest request)
+        public static async Task<Credential> GetCredentialAsync(this HttpRequestData request)
         {
             try
             {
@@ -27,6 +28,14 @@ namespace DL444.CquSchedule.Backend.Extensions
             {
                 return default;
             }
+        }
+
+        public static HttpResponseData CreateStringContentResponse(this HttpRequestData request, HttpStatusCode statusCode, string content, string contentType)
+        {
+            HttpResponseData response = request.CreateResponse(statusCode);
+            response.Headers.Add("Content-Type", contentType);
+            response.WriteString(content);
+            return response;
         }
     }
 }

@@ -4,11 +4,13 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using DL444.CquSchedule.Backend.Exceptions;
+using DL444.CquSchedule.Backend.Extensions;
 using DL444.CquSchedule.Backend.Models;
 using DL444.CquSchedule.Backend.Services;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
 using User = DL444.CquSchedule.Backend.Models.User;
 
@@ -30,9 +32,9 @@ namespace DL444.CquSchedule.Backend
             this.encryptionService = encryptionService;
         }
 
-        [FunctionName("ScheduleRefresh_Orchestrator")]
+        [Function("ScheduleRefresh_Orchestrator")]
         public async Task RunOrchestratorAsync(
-            [OrchestrationTrigger] IDurableOrchestrationContext context)
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             string sessionTermId = default;
             var users = context.GetInput<List<string>>();
@@ -47,9 +49,10 @@ namespace DL444.CquSchedule.Backend
             }
         }
 
-        [FunctionName("ScheduleRefresh_Activity")]
-        public async Task<string> RefreshAsync([ActivityTrigger] ScheduleRefreshInput input, ILogger log)
+        [Function("ScheduleRefresh_Activity")]
+        public async Task<string> RefreshAsync([ActivityTrigger] ScheduleRefreshInput input, FunctionContext ctx)
         {
+            ILogger log = ctx.GetFunctionNamedLogger();
             (bool getUserSuccess, User user) = await GetUserAsync(input.Username, log);
             if (!getUserSuccess)
             {
@@ -116,15 +119,16 @@ namespace DL444.CquSchedule.Backend
             return input.SessionTermId;
         }
 
-        [FunctionName("ScheduleRefresh_Client")]
+        [Function("ScheduleRefresh_Client")]
         public async Task StartAsync(
             [TimerTrigger("0 0 8 * * *")] TimerInfo timer,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
+            [DurableClient] DurableTaskClient starter,
+            FunctionContext ctx)
         {
+            ILogger log = ctx.GetFunctionNamedLogger();
             List<string> users = await dataService.GetUserIdsAsync();
             log.LogInformation("Current active user count: {userCount}.", users.Count);
-            await starter.StartNewAsync("ScheduleRefresh_Orchestrator", null, users);
+            await starter.ScheduleNewOrchestrationInstanceAsync("ScheduleRefresh_Orchestrator", users);
         }
 
         private async Task<(bool success, User user)> GetUserAsync(string username, ILogger log)

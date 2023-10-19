@@ -6,80 +6,74 @@ using Azure.Security.KeyVault.Keys;
 using Azure.Security.KeyVault.Keys.Cryptography;
 using DL444.CquSchedule.Backend.Services;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-[assembly: FunctionsStartup(typeof(DL444.CquSchedule.Backend.Startup))]
-namespace DL444.CquSchedule.Backend
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+IHost host = new HostBuilder().ConfigureFunctionsWorkerDefaults().ConfigureAppConfiguration(ConfigureAppConfiguration).ConfigureServices(ConfigureServices).Build();
+await host.RunAsync();
+
+static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
 {
-    internal sealed class Startup : FunctionsStartup
+    services.AddSingleton(services =>
     {
-        public override void Configure(IFunctionsHostBuilder builder)
+        var config = services.GetService<IConfiguration>();
+        string connection = config.GetValue<string>("Database:Connection");
+        string database = config.GetValue<string>("Database:Database");
+        string container = config.GetValue<string>("Database:Container");
+        return new CosmosClient(connection).GetContainer(database, container);
+    });
+    services.AddSingleton<ICryptographyClientContainerService>(services =>
+    {
+        var config = services.GetService<IConfiguration>();
+        string keyName = config.GetValue<string>("Credential:KeyName");
+        Uri latestKeyId = services.GetService<KeyClient>().GetKey(keyName).Value.Id;
+        var client = new CryptographyClient(latestKeyId, new DefaultAzureCredential());
+        return new CryptographyClientContainerService()
         {
-            builder.Services.AddSingleton(services =>
-            {
-                var config = services.GetService<IConfiguration>();
-                string connection = config.GetValue<string>("Database:Connection");
-                string database = config.GetValue<string>("Database:Database");
-                string container = config.GetValue<string>("Database:Container");
-                return new CosmosClient(connection).GetContainer(database, container);
-            });
-            builder.Services.AddSingleton<ICryptographyClientContainerService>(services =>
-            {
-                var config = services.GetService<IConfiguration>();
-                string keyName = config.GetValue<string>("Credential:KeyName");
-                Uri latestKeyId = services.GetService<KeyClient>().GetKey(keyName).Value.Id;
-                var client = new CryptographyClient(latestKeyId, new DefaultAzureCredential());
-                return new CryptographyClientContainerService()
-                {
-                    Client = client
-                };
-            });
-            builder.Services.AddSingleton<IWellknownDataService, WellknownDataService>();
-            builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
+            Client = client
+        };
+    });
+    services.AddSingleton<IWellknownDataService, WellknownDataService>();
+    services.AddSingleton<ILocalizationService, LocalizationService>();
 
-            var timeout = TimeSpan.FromSeconds(builder.GetContext().Configuration.GetValue("Upstream:Timeout", 30));
-            // Pooled HttpMessageHandler via IHttpClientFactory is incompatible with automatic cookie management.
-            // Manual cookie management required.
-            // See https://docs.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-6.0#cookies for more info. 
-            builder.Services.AddHttpClient<UndergraduateScheduleService>(x => x.Timeout = timeout)
-                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler()
-                {
-                    UseCookies = false,
-                    AllowAutoRedirect = false
-                });
-            builder.Services.AddHttpClient<PostgraduateScheduleService>(x => x.Timeout = timeout)
-                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler()
-                {
-                    UseCookies = false
-                });
-
-            builder.Services.AddTransient<IUpstreamCredentialEncryptionService, UpstreamCredentialEncryptionService>();
-            builder.Services.AddTransient<IStoredCredentialEncryptionService, KeyVaultCredentialEncryptionService>();
-            builder.Services.AddTransient<IExamStudentIdService, ExamStudentIdService>();
-            builder.Services.AddTransient<IDataService, DataService>();
-            builder.Services.AddTransient<ITermService, TermService>();
-            builder.Services.AddTransient<ICalendarService, CalendarService>();
-            builder.Services.AddTransient(services =>
-            {
-                var config = services.GetService<IConfiguration>();
-                string keyVaultUri = config.GetValue<string>("Credential:KeyVault");
-                return new KeyClient(new Uri(keyVaultUri), new DefaultAzureCredential());
-            });
-
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        }
-
-        public override void ConfigureAppConfiguration(IFunctionsConfigurationBuilder builder)
+    var timeout = TimeSpan.FromSeconds(context.Configuration.GetValue("Upstream:Timeout", 30));
+    // Pooled HttpMessageHandler via IHttpClientFactory is incompatible with automatic cookie management.
+    // Manual cookie management required.
+    // See https://docs.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-6.0#cookies for more info. 
+    services.AddHttpClient<UndergraduateScheduleService>(x => x.Timeout = timeout)
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler()
         {
-            string rootPath = builder.GetContext().ApplicationRootPath;
-            builder.ConfigurationBuilder
-                .AddJsonFile(System.IO.Path.Combine(rootPath, "local.settings.json"), true)
-                .AddJsonFile(System.IO.Path.Combine(rootPath, "localization.json"))
-                .AddJsonFile(System.IO.Path.Combine(rootPath, "wellknown.json"))
-                .AddEnvironmentVariables()
-                .Build();
-        }
-    }
+            UseCookies = false,
+            AllowAutoRedirect = false
+        });
+    services.AddHttpClient<PostgraduateScheduleService>(x => x.Timeout = timeout)
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler()
+        {
+            UseCookies = false
+        });
+
+    services.AddTransient<IUpstreamCredentialEncryptionService, UpstreamCredentialEncryptionService>();
+    services.AddTransient<IStoredCredentialEncryptionService, KeyVaultCredentialEncryptionService>();
+    services.AddTransient<IExamStudentIdService, ExamStudentIdService>();
+    services.AddTransient<IDataService, DataService>();
+    services.AddTransient<ITermService, TermService>();
+    services.AddTransient<ICalendarService, CalendarService>();
+    services.AddTransient(services =>
+    {
+        var config = services.GetService<IConfiguration>();
+        string keyVaultUri = config.GetValue<string>("Credential:KeyVault");
+        return new KeyClient(new Uri(keyVaultUri), new DefaultAzureCredential());
+    });
+}
+
+static void ConfigureAppConfiguration(HostBuilderContext context, IConfigurationBuilder builder)
+{
+    string rootPath = context.HostingEnvironment.ContentRootPath;
+    builder
+        .AddJsonFile(System.IO.Path.Combine(rootPath, "local.settings.json"), true)
+        .AddJsonFile(System.IO.Path.Combine(rootPath, "localization.json"))
+        .AddJsonFile(System.IO.Path.Combine(rootPath, "wellknown.json"))
+        .AddEnvironmentVariables();
 }
