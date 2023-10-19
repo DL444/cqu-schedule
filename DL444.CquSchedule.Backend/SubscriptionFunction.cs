@@ -67,14 +67,24 @@ namespace DL444.CquSchedule.Backend
                 User user = await userTask;
                 if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(user.SubscriptionId), Encoding.UTF8.GetBytes(subscriptionId)))
                 {
-                    return new OkObjectResult(calendarService.GetEmptyCalendar());
+                    return new ContentResult()
+                    {
+                        Content = calendarService.GetEmptyCalendar(),
+                        ContentType = "text/calendar; charset=utf-8",
+                        StatusCode = 200
+                    };
                 }
             }
             catch (CosmosException ex)
             {
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                 {
-                    return new OkObjectResult(calendarService.GetEmptyCalendar());
+                    return new ContentResult()
+                    {
+                        Content = calendarService.GetEmptyCalendar(),
+                        ContentType = "text/calendar; charset=utf-8",
+                        StatusCode = 200
+                    };
                 }
                 else
                 {
@@ -93,7 +103,12 @@ namespace DL444.CquSchedule.Backend
                 Schedule schedule = await scheduleTask;
                 if (schedule.RecordStatus == RecordStatus.StaleAuthError)
                 {
-                    return new OkObjectResult(calendarService.GetEmptyCalendar());
+                    return new ContentResult()
+                    {
+                        Content = calendarService.GetEmptyCalendar(),
+                        ContentType = "text/calendar; charset=utf-8",
+                        StatusCode = 200
+                    };
                 }
                 else
                 {
