@@ -3,9 +3,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
     <OutputType>Exe</OutputType>
-    <FunctionsEnableWorkerIndexing>True</FunctionsEnableWorkerIndexing>
     <FunctionsAutoRegisterGeneratedMetadataProvider>True</FunctionsAutoRegisterGeneratedMetadataProvider>
-    <FunctionsEnableExecutorSourceGen>True</FunctionsEnableExecutorSourceGen>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
