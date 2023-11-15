@@ -1,5 +1,5 @@
 {
-    "azureFunctions.deploySubpath": "DL444.CquSchedule.Backend/bin/Release/net6.0/win-x64/publish",
+    "azureFunctions.deploySubpath": "DL444.CquSchedule.Backend/bin/Release/net8.0/win-x64/publish",
     "azureFunctions.projectLanguage": "C#",
     "azureFunctions.projectRuntime": "~4",
     "debug.internalConsoleOptions": "neverOpen",
