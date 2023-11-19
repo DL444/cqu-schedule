@@ -23,14 +23,13 @@
         <a class="dismiss">🗙</a>
     </div>
 
-    <script src="js/decode.min.js"></script>
-    <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="_framework/blazor.webassembly.js" autostart="false"></script>
-    <script>
+    <script type="module">
+        import { BrotliDecode } from './js/decode.min.js';
         Blazor.start({
             loadBootResource: function (type, name, defaultUri, integrity) {
-                if (type !== 'dotnetjs' && location.hostname !== 'localhost') {
+                if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration') {
                     return (async function () {
                         const response = await fetch(defaultUri + '.br', { cache: 'no-cache' });
                         if (!response.ok) {
