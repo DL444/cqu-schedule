@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -316,8 +317,7 @@ namespace DL444.CquSchedule.Backend
             bool success = Convert.TryToBase64Chars(rngBuffer, base64Buffer, out _);
             if (!success)
             {
-                // TODO: throw System.Diagnostics.UnreachableException instead once migrated to .NET 8.
-                throw new InvalidOperationException("Internal buffer overflow creating subscription ID.");
+                throw new UnreachableException("Internal buffer overflow creating subscription ID.");
             }
 
             // We need a URL-safe Base64 string as specified by RFC 4648 Section 5, which replaces two characters and removes padding.
@@ -329,7 +329,7 @@ namespace DL444.CquSchedule.Backend
                 {
                     '+' => '-',
                     '/' => '_',
-                    _ => throw new InvalidOperationException("Unexpected character encounter generating URI-safe Base64 string.")
+                    _ => throw new UnreachableException("Unexpected character encounter generating URI-safe Base64 string.")
                 };
                 index = base64Buffer.IndexOfAny('+', '/', '=');
             }
