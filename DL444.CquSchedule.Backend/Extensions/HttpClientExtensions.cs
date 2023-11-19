@@ -36,7 +36,7 @@ namespace DL444.CquSchedule.Backend.Extensions
                 }
                 requestCount++;
 
-                if ((currentResponse.StatusCode != System.Net.HttpStatusCode.Redirect && currentResponse.StatusCode != System.Net.HttpStatusCode.Moved) || requestCount > maxRedirects)
+                if ((currentResponse.StatusCode != HttpStatusCode.Redirect && currentResponse.StatusCode != HttpStatusCode.Moved) || requestCount > maxRedirects)
                 {
                     break;
                 }
