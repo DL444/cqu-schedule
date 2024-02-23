@@ -4,11 +4,7 @@ namespace DL444.CquSchedule.Backend.Models
 {
     internal struct UpstreamScheduleResponseModel
     {
-        [JsonPropertyName("status")]
-        public string Status { get; set; }
-        [JsonPropertyName("msg")]
-        public string Message { get; set; }
-        [JsonPropertyName("data")]
+        [JsonPropertyName("classTimetableVOList")]
         public ScheduleDataEntry[] Data { get; set; }
     }
 
@@ -24,15 +20,9 @@ namespace DL444.CquSchedule.Backend.Models
         public string DayOfWeek { get; set; }
         [JsonPropertyName("period")]
         public string Session { get; set; }
-        [JsonPropertyName("classTimetableInstrVOList")]
-        public LecturerEntry[] Lecturers { get; set; }
+        [JsonPropertyName("instructorName")]
+        public string LecturersNotation { get; set; }
         [JsonPropertyName("classType")]
         public string ClassType { get; set; }
-    }
-
-    internal struct LecturerEntry
-    {
-        [JsonPropertyName("instructorName")]
-        public string Lecturer { get; set; }
     }
 }

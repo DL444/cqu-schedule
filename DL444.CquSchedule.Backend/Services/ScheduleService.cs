@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -168,29 +169,18 @@ namespace DL444.CquSchedule.Backend.Services
                 throw new ArgumentException("Sign in context is not for undergraduate.");
             }
 
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "https://my.cqu.edu.cn/api/enrollment/enrollment-batch/user-switch-batch");
-            request.Content = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("sessionId", termId)
-            });
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            HttpResponseMessage response = await httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-
             string examStudentId = examStudentIdService.GetExamStudentId(username);
             Task<HttpResponseMessage> examTask = httpClient.GetAsync($"https://my.cqu.edu.cn/api/exam/examTask/get-student-exam-list-outside?studentId={examStudentId}");
 
-            request = new HttpRequestMessage(HttpMethod.Get, $"https://my.cqu.edu.cn/api/enrollment/timetable/student/{username}");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"https://my.cqu.edu.cn/api/timetable/class/timetable/student/my-table-detail?sessionId={termId}");
+            request.Content = JsonContent.Create<string[]>([username]);
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            response = await httpClient.SendAsync(request);
+            HttpResponseMessage response = await httpClient.SendAsync(request);
             var responseModel = await UpstreamScheduleResponseModelSerializerContext.Default.DeserializeFromStringAsync(await response.Content.ReadAsStreamAsync());
             Schedule schedule = new Schedule(username);
-            if (!responseModel.Status.Equals("success", StringComparison.Ordinal) || responseModel.Data == null)
+            if (responseModel.Data == null)
             {
-                throw new UpstreamRequestException("Upstream server did not return success status for schedule request.")
-                {
-                    ErrorDescription = responseModel.Message
-                };
+                throw new UpstreamRequestException("Upstream server did not return success status for schedule request.");
             }
             foreach (var responseEntry in responseModel.Data)
             {
@@ -201,9 +191,22 @@ namespace DL444.CquSchedule.Backend.Services
                 string name = responseEntry.Name;
                 if (expClassTypes.Contains(responseEntry.ClassType))
                 {
+                    // This is empirically dead code. The site does not return valid ClassType anymore.
                     name = name.Contains("实验") ? name : $"{name}实验";
                 }
-                string lecturer = responseEntry.Lecturers == null ? string.Empty : responseEntry.Lecturers.FirstOrDefault().Lecturer;
+                string lecturer = string.Empty;
+                if (!string.IsNullOrEmpty(responseEntry.LecturersNotation))
+                {
+                    Match lecturerMatch = lecturerExtractionRegex.Match(responseEntry.LecturersNotation);
+                    if (lecturerMatch.Success)
+                    {
+                        lecturer = lecturerMatch.Groups[1].Value;
+                    }
+                    else
+                    {
+                        lecturer = responseEntry.LecturersNotation;
+                    }
+                }
                 ScheduleEntry entry = new ScheduleEntry()
                 {
                     Name = name,
@@ -406,6 +409,7 @@ namespace DL444.CquSchedule.Backend.Services
         private readonly IUpstreamCredentialEncryptionService encryptionService;
         private readonly IExamStudentIdService examStudentIdService;
         private readonly int vacationServeDays;
+        private static readonly Regex lecturerExtractionRegex = new Regex("(.*?)-\\d");
         private static readonly Regex roomSimplifyRegex = new Regex("(室|机房|中心|分析系统|创新设计|展示与分析).*?-(.*?)$");
         private static readonly string[] expClassTypes = new[] { "上机", "实验" };
     }
