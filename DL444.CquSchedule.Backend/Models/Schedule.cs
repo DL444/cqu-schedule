@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using DL444.CquSchedule.Backend.Extensions;
 using Newtonsoft.Json;
 
 namespace DL444.CquSchedule.Backend.Models
@@ -32,8 +33,18 @@ namespace DL444.CquSchedule.Backend.Models
                 scheduleWeek = new ScheduleWeek(week);
                 Weeks.Add(scheduleWeek);
             }
-            scheduleWeek.Entries.Add(entry);
+            scheduleWeek.AddEntry(entry);
         }
+
+        public void AddExam(ExamEntry exam) => Exams.AddOrReplace(exam.EntryKey, exam, exams, (existingItem, newItem) => new ExamEntry()
+        {
+            Name = existingItem.Name,
+            Room = string.IsNullOrEmpty(existingItem.Room) ? newItem.Room : existingItem.Room,
+            SimplifiedRoom = string.IsNullOrEmpty(existingItem.SimplifiedRoom) ? newItem.SimplifiedRoom : existingItem.SimplifiedRoom,
+            Seat = existingItem.Seat == 0 ? newItem.Seat : existingItem.Seat,
+            StartTime = existingItem.StartTime,
+            EndTime = existingItem.EndTime
+        });
 
         public bool Equals(Schedule other)
         {
@@ -62,6 +73,8 @@ namespace DL444.CquSchedule.Backend.Models
 
         public static bool operator ==(Schedule l, Schedule r) => l.Equals(r);
         public static bool operator !=(Schedule l, Schedule r) => !(l == r);
+
+        private readonly Dictionary<ExamEntry.Key, ExamEntry> exams = [];
     }
 
     public struct ScheduleWeek : IEquatable<ScheduleWeek>
@@ -74,6 +87,18 @@ namespace DL444.CquSchedule.Backend.Models
 
         public int WeekNumber { get; set; }
         public List<ScheduleEntry> Entries { get; set; }
+
+        public void AddEntry(ScheduleEntry entry)
+            => Entries.AddOrReplace(entry.EntryKey, entry, entries, (existingItem, newItem) => new ScheduleEntry()
+            {
+                Name = existingItem.Name,
+                Lecturer = string.IsNullOrEmpty(existingItem.Lecturer) ? newItem.Lecturer : existingItem.Lecturer,
+                Room = string.IsNullOrEmpty(existingItem.Room) ? newItem.Room : existingItem.Room,
+                SimplifiedRoom = string.IsNullOrEmpty(existingItem.SimplifiedRoom) ? newItem.SimplifiedRoom : existingItem.SimplifiedRoom,
+                DayOfWeek = existingItem.DayOfWeek,
+                StartSession = existingItem.StartSession,
+                EndSession = existingItem.EndSession
+            });
 
         public bool Equals(ScheduleWeek other)
         {
@@ -93,6 +118,8 @@ namespace DL444.CquSchedule.Backend.Models
 
         public static bool operator ==(ScheduleWeek l, ScheduleWeek r) => l.Equals(r);
         public static bool operator !=(ScheduleWeek l, ScheduleWeek r) => !(l == r);
+
+        private readonly Dictionary<ScheduleEntry.Key, ScheduleEntry> entries = [];
     }
 
     public struct ScheduleEntry : IEquatable<ScheduleEntry>
@@ -104,6 +131,8 @@ namespace DL444.CquSchedule.Backend.Models
         public int DayOfWeek { get; set; }
         public int StartSession { get; set; }
         public int EndSession { get; set; }
+
+        public readonly Key EntryKey => new(Name, DayOfWeek, StartSession, EndSession);
 
         public bool Equals(ScheduleEntry other) =>
             string.Equals(Name, other.Name, StringComparison.Ordinal)
@@ -120,6 +149,8 @@ namespace DL444.CquSchedule.Backend.Models
 
         public static bool operator ==(ScheduleEntry l, ScheduleEntry r) => l.Equals(r);
         public static bool operator !=(ScheduleEntry l, ScheduleEntry r) => !(l == r);
+
+        public record Key(string Name, int DayOfWeek, int StartSession, int EndSession);
     }
 
     public struct ExamEntry : IEquatable<ExamEntry>
@@ -130,6 +161,8 @@ namespace DL444.CquSchedule.Backend.Models
         public int Seat { get; set; }
         public DateTimeOffset StartTime { get; set; }
         public DateTimeOffset EndTime { get; set; }
+
+        public readonly Key EntryKey => new Key(Name, StartTime, EndTime);
 
         public bool Equals(ExamEntry other) =>
             string.Equals(Name, other.Name, StringComparison.Ordinal)
@@ -145,5 +178,7 @@ namespace DL444.CquSchedule.Backend.Models
 
         public static bool operator ==(ExamEntry l, ExamEntry r) => l.Equals(r);
         public static bool operator !=(ExamEntry l, ExamEntry r) => !(l == r);
+
+        public record Key(string Name, DateTimeOffset StartTime, DateTimeOffset EndTime);
     }
 }

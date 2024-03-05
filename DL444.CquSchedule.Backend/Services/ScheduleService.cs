@@ -264,7 +264,7 @@ namespace DL444.CquSchedule.Backend.Services
                     StartTime = startTime,
                     EndTime = endTime
                 };
-                schedule.Exams.Add(entry);
+                schedule.AddExam(entry);
             }
             schedule.Exams.Sort((x, y) => x.StartTime.CompareTo(y.StartTime));
 
