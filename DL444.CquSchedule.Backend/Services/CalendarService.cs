@@ -1,4 +1,5 @@
 using System;
+using System.Security.Cryptography;
 using System.Text;
 using DL444.CquSchedule.Backend.Models;
 using Ical.Net;
@@ -22,7 +23,7 @@ namespace DL444.CquSchedule.Backend.Services
     {
         int VacationCalendarServeDays { get; }
 
-        string GetCalendar(Term currentTerm, Schedule schedule, CalenderEventCategories eventCategories = CalenderEventCategories.All, int remindTime = 15);
+        string GetCalendar(string username, Term currentTerm, Schedule schedule, CalenderEventCategories eventCategories = CalenderEventCategories.All, int remindTime = 15);
         string GetEmptyCalendar();
     }
 
@@ -37,7 +38,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         public int VacationCalendarServeDays { get; }
 
-        public string GetCalendar(Term currentTerm, Schedule schedule, CalenderEventCategories eventCategories, int remindTime)
+        public string GetCalendar(string username, Term currentTerm, Schedule schedule, CalenderEventCategories eventCategories, int remindTime)
         {
             if (DateTimeOffset.Now > currentTerm.EndDate.AddDays(VacationCalendarServeDays)
                 || DateTimeOffset.Now < currentTerm.StartDate.AddDays(-VacationCalendarServeDays))
@@ -57,7 +58,7 @@ namespace DL444.CquSchedule.Backend.Services
                         {
                             continue;
                         }
-                        calendar.Events.Add(GetCalendarEvent(entry, currentTerm, week, remindTime, descriptionBuilder));
+                        calendar.Events.Add(GetCalendarEvent(username, entry, currentTerm, week, remindTime, descriptionBuilder));
                     }
                 }
             }
@@ -66,7 +67,7 @@ namespace DL444.CquSchedule.Backend.Services
             {
                 foreach (var exam in schedule.Exams)
                 {
-                    calendar.Events.Add(GetCalendarEvent(exam, remindTime));
+                    calendar.Events.Add(GetCalendarEvent(username, exam, remindTime));
                 }
             }
 
@@ -75,7 +76,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         public string GetEmptyCalendar() => new CalendarSerializer(new Calendar()).SerializeToString();
 
-        private CalendarEvent GetCalendarEvent(ScheduleEntry entry, Term currentTerm, ScheduleWeek week, int remindTime, StringBuilder descriptionBuilder)
+        private CalendarEvent GetCalendarEvent(string username, ScheduleEntry entry, Term currentTerm, ScheduleWeek week, int remindTime, StringBuilder descriptionBuilder)
         {
             TimeSpan startTime = wellknown.Schedule[entry.StartSession - 1].StartOffset;
             int endSession = Math.Min(entry.EndSession, wellknown.Schedule.Count);
@@ -97,7 +98,7 @@ namespace DL444.CquSchedule.Backend.Services
                 descriptionBuilder.Append(locService.GetString("CalendarLecturer", locService.DefaultCulture, entry.Lecturer));
             }
 
-            return new CalendarEvent()
+            var calendarEvent = new CalendarEvent()
             {
                 Summary = entry.Name,
                 DtStart = GetTime(currentTerm.StartDate, week.WeekNumber, entry.DayOfWeek, startTime),
@@ -113,12 +114,14 @@ namespace DL444.CquSchedule.Backend.Services
                     }
                 }
             };
+            calendarEvent.Uid = GetUid(calendarEvent, username);
+            return calendarEvent;
         }
 
-        private static CalendarEvent GetCalendarEvent(ExamEntry exam, int remindTime)
+        private static CalendarEvent GetCalendarEvent(string username, ExamEntry exam, int remindTime)
         {
             bool roomSimplified = exam.Room != null && !exam.Room.Equals(exam.SimplifiedRoom, StringComparison.Ordinal);
-            return new CalendarEvent()
+            var calendarEvent = new CalendarEvent()
             {
                 Summary = exam.Name,
                 DtStart = new CalDateTime(exam.StartTime.UtcDateTime),
@@ -134,6 +137,8 @@ namespace DL444.CquSchedule.Backend.Services
                     }
                 }
             };
+            calendarEvent.Uid = GetUid(calendarEvent, username);
+            return calendarEvent;
         }
 
         private static CalDateTime GetTime(DateTimeOffset termStartDate, int week, int dayOfWeek, TimeSpan time)
@@ -141,6 +146,17 @@ namespace DL444.CquSchedule.Backend.Services
             int daysSinceTermStart = (week - 1) * 7 + (dayOfWeek - 1);
             DateTimeOffset dateTime = termStartDate.AddDays(daysSinceTermStart).Add(time);
             return new CalDateTime(dateTime.UtcDateTime);
+        }
+
+        private static string GetUid(CalendarEvent calendarEvent, string ancillaryIdentifier)
+        {
+            // UIDs must be unique across events and temporally persistent at the same time,
+            // or clients might briefly show duplicated events during refresh.
+            // This property choice ensures that no duplicated UIDs will be generated even if
+            // the user has conflicting schedules, while minimizing the likelihood of UID changes
+            // in the event of schedule updates (summary and time rarely change).
+            var idSource = $"{ancillaryIdentifier}, {calendarEvent.Summary}, {calendarEvent.DtStart}, {calendarEvent.DtEnd}";
+            return Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(idSource)));
         }
 
         private readonly IWellknownDataService wellknown;

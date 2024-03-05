@@ -97,7 +97,7 @@ namespace DL444.CquSchedule.Backend
                     try
                     {
                         Term term = await termTask;
-                        return req.CreateStringContentResponse(HttpStatusCode.OK, calendarService.GetCalendar(term, schedule, eventCategories), calendarContentType);
+                        return req.CreateStringContentResponse(HttpStatusCode.OK, calendarService.GetCalendar(username, term, schedule, eventCategories), calendarContentType);
                     }
                     catch (CosmosException ex)
                     {
@@ -274,7 +274,7 @@ namespace DL444.CquSchedule.Backend
 
             if (!credential.ShouldSaveCredential)
             {
-                string ics = calendarService.GetCalendar(term, schedule);
+                string ics = calendarService.GetCalendar(credential.Username, term, schedule);
                 var response = new CquSchedule.Models.Response<IcsSubscription>(true, new IcsSubscription(null, ics), successMessage);
                 return IcsSubscriptionResponseSerializerContext.Default.GetSerializedResponse(req, response);
             }
