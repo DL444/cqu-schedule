@@ -9,15 +9,7 @@ namespace DL444.CquSchedule.Backend.Models
         [JsonPropertyName("msg")]
         public string Message { get; set; }
         [JsonPropertyName("data")]
-        public ExamDataModel Data { get; set; }
-    }
-
-    internal struct ExamDataModel
-    {
-        [JsonPropertyName("content")]
-        public ExamContentEntry[] Content { get; set; }
-        [JsonPropertyName("totalPages")]
-        public int TotalPages { get; set; }
+        public ExamContentEntry[] Data { get; set; }
     }
 
     internal struct ExamContentEntry

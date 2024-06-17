@@ -24,11 +24,10 @@ namespace DL444.CquSchedule.Backend.Services
 
     internal sealed class UndergraduateScheduleService : IScheduleService
     {
-        public UndergraduateScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService, IExamStudentIdService examStudentIdService, IConfiguration config)
+        public UndergraduateScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService, IConfiguration config)
         {
             this.httpClient = httpClient;
             this.encryptionService = encryptionService;
-            this.examStudentIdService = examStudentIdService;
             vacationServeDays = config.GetValue("Calendar:VacationServeDays", 3);
         }
 
@@ -169,13 +168,15 @@ namespace DL444.CquSchedule.Backend.Services
                 throw new ArgumentException("Sign in context is not for undergraduate.");
             }
 
-            string examStudentId = examStudentIdService.GetExamStudentId(username);
-            Task<HttpResponseMessage> examTask = httpClient.GetAsync($"https://my.cqu.edu.cn/api/exam/examTask/get-student-exam-list-outside?studentId={examStudentId}");
+            var authenticationHeader = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            var examRequest = new HttpRequestMessage(HttpMethod.Get, $"https://my.cqu.edu.cn/api/exam/examTask/get-student-exam-tab-list");
+            examRequest.Headers.Authorization = authenticationHeader;
+            Task<HttpResponseMessage> examTask = httpClient.SendAsync(examRequest);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, $"https://my.cqu.edu.cn/api/timetable/class/timetable/student/my-table-detail?sessionId={termId}");
-            request.Content = JsonContent.Create<string[]>([username]);
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            HttpResponseMessage response = await httpClient.SendAsync(request);
+            var courseRequest = new HttpRequestMessage(HttpMethod.Post, $"https://my.cqu.edu.cn/api/timetable/class/timetable/student/my-table-detail?sessionId={termId}");
+            courseRequest.Content = JsonContent.Create<string[]>([username]);
+            courseRequest.Headers.Authorization = authenticationHeader;
+            HttpResponseMessage response = await httpClient.SendAsync(courseRequest);
             var responseModel = await UpstreamScheduleResponseModelSerializerContext.Default.DeserializeFromStringAsync(await response.Content.ReadAsStreamAsync());
             Schedule schedule = new Schedule(username);
             if (responseModel.Data == null)
@@ -229,18 +230,14 @@ namespace DL444.CquSchedule.Backend.Services
 
             response = await examTask;
             var examResponseModel = await UpstreamExamResponseModelSerializerContext.Default.DeserializeFromStringAsync(await response.Content.ReadAsStreamAsync());
-            if (!examResponseModel.Status.Equals("success", StringComparison.Ordinal) || examResponseModel.Data.Content == null)
+            if (!examResponseModel.Status.Equals("success", StringComparison.Ordinal) || examResponseModel.Data == null)
             {
                 throw new UpstreamRequestException("Upstream server did not return success status for exam request.")
                 {
                     ErrorDescription = examResponseModel.Message
                 };
             }
-            if (examResponseModel.Data.TotalPages > 1)
-            {
-                throw new UpstreamRequestException("Upstream server returned multiple exam pages.");
-            }
-            foreach (var responseEntry in examResponseModel.Data.Content)
+            foreach (var responseEntry in examResponseModel.Data)
             {
                 bool dateParseSuccess = DateTime.TryParse(responseEntry.Date, out DateTime localDate);
                 bool startTimeParseSuccess = DateTime.TryParse(responseEntry.StartTime, out DateTime localStartTimeInDay);
@@ -407,7 +404,6 @@ namespace DL444.CquSchedule.Backend.Services
 
         private readonly HttpClient httpClient;
         private readonly IUpstreamCredentialEncryptionService encryptionService;
-        private readonly IExamStudentIdService examStudentIdService;
         private readonly int vacationServeDays;
         private static readonly Regex lecturerExtractionRegex = new Regex("(.*?)-\\d");
         private static readonly Regex roomSimplifyRegex = new Regex("(室|机房|中心|分析系统|创新设计|展示与分析).*?-(.*?)$");

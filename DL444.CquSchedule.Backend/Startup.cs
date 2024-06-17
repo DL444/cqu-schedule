@@ -56,7 +56,6 @@ static void ConfigureServices(HostBuilderContext context, IServiceCollection ser
 
     services.AddTransient<IUpstreamCredentialEncryptionService, UpstreamCredentialEncryptionService>();
     services.AddTransient<IStoredCredentialEncryptionService, KeyVaultCredentialEncryptionService>();
-    services.AddTransient<IExamStudentIdService, ExamStudentIdService>();
     services.AddTransient<IDataService, DataService>();
     services.AddTransient<ITermService, TermService>();
     services.AddTransient<ICalendarService, CalendarService>();
