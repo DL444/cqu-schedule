@@ -1,15 +1,16 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject ApiService ApiService;
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration;
 
 <div class="page">
     <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+        <div class="container-fluid">
         <a class="navbar-brand" href="">重大课表日历</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navBarItems">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navBarItems">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navBarItems">
-            <ul class="navbar-nav mr-auto mr-auto mt-2 mt-sm-0">
+                <ul class="navbar-nav me-auto">
                 <li class="nav-item">
                     <NavLink class="nav-link" href="" Match="NavLinkMatch.All">添加日历</NavLink>
                 </li>
@@ -31,6 +32,7 @@
                     <NavLink class="nav-link" href="about">关于</NavLink>
                 </li>
             </ul>
+            </div>
         </div>
     </nav>
 

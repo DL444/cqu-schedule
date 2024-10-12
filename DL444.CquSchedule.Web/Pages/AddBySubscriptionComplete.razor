@@ -5,13 +5,13 @@
 <h2>你的日历订阅</h2>
 
 <p>将这一订阅地址复制下来，将该订阅地址导入至你使用的日历服务。</p>
-<p class="text-monospace font-weight-bold">@($"{Configuration["ApiBaseAddress"]}subscription/{Username}/{SubscriptionId}")</p>
+<p class="font-monospace fw-bold">@($"{Configuration["ApiBaseAddress"]}subscription/{Username}/{SubscriptionId}")</p>
 
 <br />
 <p>或者，使用下面的两个订阅地址，可以分别得到仅包含课程安排与考试安排的日历。</p>
 <p>这样，你便可以在你使用的日历服务中，为两种日程指定不同的颜色。</p>
-<p class="text-monospace">@($"{Configuration["ApiBaseAddress"]}")<b>course</b>@($"/{Username}/{SubscriptionId}")</p>
-<p class="text-monospace">@($"{Configuration["ApiBaseAddress"]}")<b>exam</b>@($"/{Username}/{SubscriptionId}")</p>
+<p class="font-monospace">@($"{Configuration["ApiBaseAddress"]}")<b>course</b>@($"/{Username}/{SubscriptionId}")</p>
+<p class="font-monospace">@($"{Configuration["ApiBaseAddress"]}")<b>exam</b>@($"/{Username}/{SubscriptionId}")</p>
 
 @if (!string.IsNullOrEmpty(IcsContentContainer.PostActionMessage))
 {
