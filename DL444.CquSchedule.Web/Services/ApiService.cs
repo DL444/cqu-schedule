@@ -25,8 +25,6 @@ namespace DL444.CquSchedule.Web.Services
             }
         }
 
-        public Task<Response<ServiceStatus>> GetServiceStatusAsync() => httpClient.GetFromJsonAsync<Response<ServiceStatus>>("status");
-
         public async Task<Response<IcsSubscription>> CreateSubscriptionAsync(Credential credential)
         {
             HttpResponseMessage response = await httpClient.PostAsJsonAsync("subscription", credential);

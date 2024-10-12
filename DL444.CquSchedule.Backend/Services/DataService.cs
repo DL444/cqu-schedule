@@ -17,7 +17,6 @@ namespace DL444.CquSchedule.Backend.Services
         Task<Schedule> GetScheduleAsync(string username);
         Task SetScheduleAsync(Schedule schedule);
         Task<bool> DeleteUserAsync(string username);
-        Task<ServiceStatusContainer> GetServiceStatusAsync();
     }
 
     internal sealed class DataService : IDataService
@@ -83,8 +82,6 @@ namespace DL444.CquSchedule.Backend.Services
 
             return !hasError;
         }
-
-        public Task<ServiceStatusContainer> GetServiceStatusAsync() => GetResourceAsync<ServiceStatusContainer>("Status", "Status");
 
         private async Task<T> GetResourceAsync<T>(string id, string partition) where T : ICosmosResource
         {

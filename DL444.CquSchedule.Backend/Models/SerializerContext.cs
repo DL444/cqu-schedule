@@ -47,13 +47,6 @@ namespace DL444.CquSchedule.Backend.Models
         public JsonTypeInfo<Response<IcsSubscription>> TypeInfo => this.ResponseIcsSubscription;
     }
 
-    [JsonSerializable(typeof(Response<ServiceStatus>))]
-    [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault)]
-    internal sealed partial class ServiceStatusResponseSerializerContext : JsonSerializerContext, IJsonSerializerContextTypeInfoSource<Response<ServiceStatus>>
-    {
-        public JsonTypeInfo<Response<ServiceStatus>> TypeInfo => this.ResponseServiceStatus;
-    }
-
     [JsonSerializable(typeof(Response<int>))]
     [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault)]
     internal sealed partial class StatusOnlyResponseSerializerContext : JsonSerializerContext, IJsonSerializerContextTypeInfoSource<Response<int>>
