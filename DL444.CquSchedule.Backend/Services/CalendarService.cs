@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using DL444.CquSchedule.Backend.Models;
@@ -83,11 +84,20 @@ namespace DL444.CquSchedule.Backend.Services
             TimeSpan endTime = wellknown.Schedule[endSession - 1].EndOffset;
 
             descriptionBuilder.Clear();
-            bool appendRoom = entry.Room != null && !entry.Room.Equals(entry.SimplifiedRoom, StringComparison.Ordinal);
+            bool positionSet = !string.IsNullOrWhiteSpace(entry.Position);
+            bool roomSet = !string.IsNullOrWhiteSpace(entry.Room);
+            bool appendRoom = positionSet || (roomSet && !entry.Room.Equals(entry.SimplifiedRoom, StringComparison.Ordinal));
             bool appendLecturer = entry.Lecturer != null;
             if (appendRoom)
             {
-                descriptionBuilder.Append(locService.GetString("CalendarRoom", locService.DefaultCulture, entry.Room));
+                string fullRoom = (positionSet, roomSet) switch
+                {
+                    (true, true) => $"{entry.Room}-{entry.Position}",
+                    (true, false) => entry.Position,
+                    (false, true) => entry.Room,
+                    _ => throw new UnreachableException()
+                };
+                descriptionBuilder.Append(locService.GetString("CalendarRoom", locService.DefaultCulture, fullRoom));
             }
             if (appendRoom && appendLecturer)
             {

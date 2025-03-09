@@ -14,6 +14,8 @@ namespace DL444.CquSchedule.Backend.Models
         public string Name { get; set; }
         [JsonPropertyName("roomName")]
         public string Room { get; set; }
+        [JsonPropertyName("position")]
+        public string Position { get; set; }
         [JsonPropertyName("teachingWeek")]
         public string Weeks { get; set; }
         [JsonPropertyName("weekDay")]

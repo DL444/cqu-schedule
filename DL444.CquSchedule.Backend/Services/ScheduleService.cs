@@ -213,7 +213,8 @@ namespace DL444.CquSchedule.Backend.Services
                     Name = name,
                     Lecturer = lecturer,
                     Room = responseEntry.Room,
-                    SimplifiedRoom = GetSimplifiedRoom(responseEntry.Room),
+                    Position = responseEntry.Position,
+                    SimplifiedRoom = GetSimplifiedRoom(responseEntry.Room, responseEntry.Position),
                     DayOfWeek = int.Parse(responseEntry.DayOfWeek),
                     StartSession = responseEntry.Session.IndexOf('1') + 1,
                     EndSession = responseEntry.Session.LastIndexOf('1') + 1
@@ -256,7 +257,7 @@ namespace DL444.CquSchedule.Backend.Services
                 {
                     Name = $"{responseEntry.Name}考试",
                     Room = responseEntry.Room,
-                    SimplifiedRoom = GetSimplifiedRoom(responseEntry.Room),
+                    SimplifiedRoom = GetSimplifiedRoom(responseEntry.Room, default),
                     Seat = seatParseSuccess ? seat : 0,
                     StartTime = startTime,
                     EndTime = endTime
@@ -386,9 +387,13 @@ namespace DL444.CquSchedule.Backend.Services
             };
         }
 
-        private static string GetSimplifiedRoom(string room)
+        private static string GetSimplifiedRoom(string room, string position)
         {
-            if (room == null)
+            if (!string.IsNullOrWhiteSpace(position))
+            {
+                return position;
+            }
+            if (string.IsNullOrEmpty(room))
             {
                 return null;
             }

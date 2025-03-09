@@ -94,6 +94,7 @@ namespace DL444.CquSchedule.Backend.Models
                 Name = existingItem.Name,
                 Lecturer = string.IsNullOrEmpty(existingItem.Lecturer) ? newItem.Lecturer : existingItem.Lecturer,
                 Room = string.IsNullOrEmpty(existingItem.Room) ? newItem.Room : existingItem.Room,
+                Position = string.IsNullOrEmpty(existingItem.Position) ? newItem.Position : existingItem.Position,
                 SimplifiedRoom = string.IsNullOrEmpty(existingItem.SimplifiedRoom) ? newItem.SimplifiedRoom : existingItem.SimplifiedRoom,
                 DayOfWeek = existingItem.DayOfWeek,
                 StartSession = existingItem.StartSession,
@@ -127,6 +128,7 @@ namespace DL444.CquSchedule.Backend.Models
         public string Name { get; set; }
         public string Lecturer { get; set; }
         public string Room { get; set; }
+        public string Position { get; set; }
         public string SimplifiedRoom { get; set; }
         public int DayOfWeek { get; set; }
         public int StartSession { get; set; }
@@ -141,11 +143,12 @@ namespace DL444.CquSchedule.Backend.Models
                 && EndSession == other.EndSession
                 && string.Equals(Lecturer, other.Lecturer, StringComparison.Ordinal)
                 && string.Equals(Room, other.Room, StringComparison.Ordinal)
+                && string.Equals(Position, other.Position, StringComparison.Ordinal)
                 && string.Equals(SimplifiedRoom, other.SimplifiedRoom, StringComparison.Ordinal);
 
         public override bool Equals(object obj) => obj is ScheduleEntry other && Equals(other);
 
-        public override int GetHashCode() => HashCode.Combine(Name, Lecturer, Room, SimplifiedRoom, DayOfWeek, StartSession, EndSession);
+        public override int GetHashCode() => HashCode.Combine(Name, Lecturer, Room, Position, SimplifiedRoom, DayOfWeek, StartSession, EndSession);
 
         public static bool operator ==(ScheduleEntry l, ScheduleEntry r) => l.Equals(r);
         public static bool operator !=(ScheduleEntry l, ScheduleEntry r) => !(l == r);
