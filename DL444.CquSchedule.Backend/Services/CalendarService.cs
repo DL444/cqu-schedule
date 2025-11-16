@@ -118,7 +118,7 @@ namespace DL444.CquSchedule.Backend.Services
                 Alarms = {
                     new Alarm()
                     {
-                        Trigger = new Trigger(new TimeSpan(0, -remindTime, 0)),
+                        Trigger = new Trigger(new Duration(minutes: -remindTime)),
                         Action = "DISPLAY",
                         Description = entry.Name
                     }
@@ -141,7 +141,7 @@ namespace DL444.CquSchedule.Backend.Services
                 Alarms = {
                     new Alarm()
                     {
-                        Trigger = new Trigger(new TimeSpan(0, -remindTime, 0)),
+                        Trigger = new Trigger(new Duration(minutes: -remindTime)),
                         Action = "DISPLAY",
                         Description = exam.Name
                     }
