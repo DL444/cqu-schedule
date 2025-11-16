@@ -11,14 +11,32 @@ namespace DL444.CquSchedule.Backend.Services
 
     internal sealed class UpstreamCredentialEncryptionService : IUpstreamCredentialEncryptionService
     {
-        public string Encrypt(string password, string key) => GetDesString(password, key);
+        public string Encrypt(string password, string key)
+        {
+            byte[] keyBytes = Convert.FromBase64String(key);
+            return keyBytes.Length switch
+            {
+                8 => EncryptDes(password, keyBytes),
+                16 or 24 or 32 => EncryptAes(password, keyBytes),
+                _ => throw new CryptographicException($"Upstream credential key size is unsupported: {keyBytes.Length} bytes.")
+            };
+        }
 
-        private static string GetDesString(string data, string key)
+        private static string EncryptDes(string data, byte[] keyBytes)
         {
             byte[] plaintext = new UTF8Encoding(false, true).GetBytes(data);
             using var des = DES.Create();
-            des.Key = Convert.FromBase64String(key);
+            des.Key = keyBytes;
             byte[] encrypted = des.EncryptEcb(plaintext, PaddingMode.PKCS7);
+            return Convert.ToBase64String(encrypted);
+        }
+
+        private static string EncryptAes(string data, byte[] keyBytes)
+        {
+            byte[] plaintext = new UTF8Encoding(false, true).GetBytes(data);
+            using var aes = Aes.Create();
+            aes.Key = keyBytes;
+            byte[] encrypted = aes.EncryptEcb(plaintext, PaddingMode.PKCS7);
             return Convert.ToBase64String(encrypted);
         }
     }

@@ -75,7 +75,7 @@
 			"type": "func",
 			"dependsOn": "build",
 			"options": {
-				"cwd": "${workspaceFolder}/DL444.CquSchedule.Backend/bin/Debug/net8.0"
+				"cwd": "${workspaceFolder}/DL444.CquSchedule.Backend/bin/Debug/net10.0"
 			},
 			"command": "host start",
 			"isBackground": true,

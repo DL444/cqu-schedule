@@ -115,8 +115,15 @@ namespace DL444.CquSchedule.Backend.Services
 
             request = new HttpRequestMessage(HttpMethod.Get, "https://my.cqu.edu.cn/authserver/oauth/authorize?client_id=enroll-prod&response_type=code&scope=all&state=&redirect_uri=https%3A%2F%2Fmy.cqu.edu.cn%2Fenroll%2Ftoken-index");
             response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
-            Regex regex = new Regex("code=(.{6})");
-            string code = regex.Match(response.RequestMessage.RequestUri.ToString()).Groups[1].Value;
+            string code = GetQueryParameter(response.RequestMessage?.RequestUri, "code");
+            if (string.IsNullOrEmpty(code))
+            {
+                AuthenticationException authEx = new AuthenticationException("Failed to authenticate user. Server did not return a valid authorization code.")
+                {
+                    Result = AuthenticationResult.UnknownFailure,
+                };
+                throw authEx;
+            }
 
             request = new HttpRequestMessage(HttpMethod.Post, "https://my.cqu.edu.cn/authserver/oauth/token");
             request.Content = new FormUrlEncodedContent(new[]
@@ -129,8 +136,8 @@ namespace DL444.CquSchedule.Backend.Services
             });
             response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
 
-            regex = new Regex("\"access_token\":\"(.*?)\"");
-            Match tokenMatch = regex.Match(await response.Content.ReadAsStringAsync());
+            Regex tokenRegex = new Regex("\"access_token\":\"(.*?)\"");
+            Match tokenMatch = tokenRegex.Match(await response.Content.ReadAsStringAsync());
             if (!tokenMatch.Success)
             {
                 AuthenticationException authEx = new AuthenticationException("Failed to authenticate user. Server did not return a token.")
@@ -360,6 +367,28 @@ namespace DL444.CquSchedule.Backend.Services
                 hint = 1;
             }
             return (hint, term);
+        }
+
+        private static string GetQueryParameter(Uri uri, string key)
+        {
+            if (uri == null || string.IsNullOrEmpty(uri.Query) || string.IsNullOrEmpty(key))
+            {
+                return null;
+            }
+            string query = uri.Query[1..];
+            foreach (var part in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+            {
+                int separator = part.IndexOf('=');
+                if (separator < 0)
+                {
+                    continue;
+                }
+                if (part[..separator].Equals(key, StringComparison.Ordinal))
+                {
+                    return Uri.UnescapeDataString(part[(separator + 1)..]);
+                }
+            }
+            return null;
         }
 
         private static SigninInfo GetSigninInfo(string html)
