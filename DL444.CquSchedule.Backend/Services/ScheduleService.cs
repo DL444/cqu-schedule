@@ -375,17 +375,25 @@ namespace DL444.CquSchedule.Backend.Services
             {
                 return null;
             }
-            string query = uri.Query[1..];
-            foreach (var part in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+            
+            ReadOnlySpan<char> query = uri.Query.AsSpan();
+            if (query[0] != '?')
             {
-                int separator = part.IndexOf('=');
-                if (separator < 0)
+                return null;
+            }
+            query = query[1..];
+
+            foreach (var range in query.Split('&'))
+            {
+ReadOnlySpan<char> part = query[range];
+                int separatorIndex = part.IndexOf('=');
+                if (separatorIndex < 0)
                 {
                     continue;
                 }
-                if (part[..separator].Equals(key, StringComparison.Ordinal))
+                if (part[..separatorIndex].Equals(key, StringComparison.Ordinal))
                 {
-                    return Uri.UnescapeDataString(part[(separator + 1)..]);
+                    return Uri.UnescapeDataString(part[(separatorIndex + 1)..]);
                 }
             }
             return null;

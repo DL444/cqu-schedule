@@ -24,7 +24,7 @@ namespace DL444.CquSchedule.Backend.Services
 
         private static string EncryptDes(string data, byte[] keyBytes)
         {
-            byte[] plaintext = new UTF8Encoding(false, true).GetBytes(data);
+            byte[] plaintext = utf8Encoding.GetBytes(data);
             using var des = DES.Create();
             des.Key = keyBytes;
             byte[] encrypted = des.EncryptEcb(plaintext, PaddingMode.PKCS7);
@@ -33,11 +33,13 @@ namespace DL444.CquSchedule.Backend.Services
 
         private static string EncryptAes(string data, byte[] keyBytes)
         {
-            byte[] plaintext = new UTF8Encoding(false, true).GetBytes(data);
+            byte[] plaintext = utf8Encoding.GetBytes(data);
             using var aes = Aes.Create();
             aes.Key = keyBytes;
             byte[] encrypted = aes.EncryptEcb(plaintext, PaddingMode.PKCS7);
             return Convert.ToBase64String(encrypted);
         }
+
+        private static readonly UTF8Encoding utf8Encoding = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     }
 }
