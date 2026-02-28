@@ -22,7 +22,7 @@ namespace DL444.CquSchedule.Backend.Services
         Task<Term> GetTermAsync(ISignInContext signInContext, TimeSpan offset);
     }
 
-    internal sealed class UndergraduateScheduleService : IScheduleService
+    internal sealed partial class UndergraduateScheduleService : IScheduleService
     {
         public UndergraduateScheduleService(HttpClient httpClient, IUpstreamCredentialEncryptionService encryptionService, IConfiguration config)
         {
@@ -87,8 +87,7 @@ namespace DL444.CquSchedule.Backend.Services
                     Result = AuthenticationResult.UnknownFailure
                 };
                 string responseContent = await response.Content.ReadAsStringAsync();
-                Regex errorRegex = new Regex("<div.*id=\"login-error-msg\">\\n\\s*?<span>(.*?)</span>", RegexOptions.CultureInvariant);
-                Match errorMatch = errorRegex.Match(responseContent);
+                Match errorMatch = ErrorRegex.Match(responseContent);
                 if (errorMatch.Success)
                 {
                     string errorCode = errorMatch.Groups[1].Value;
@@ -136,8 +135,7 @@ namespace DL444.CquSchedule.Backend.Services
             });
             response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
 
-            Regex tokenRegex = new Regex("\"access_token\":\"(.*?)\"");
-            Match tokenMatch = tokenRegex.Match(await response.Content.ReadAsStringAsync());
+            Match tokenMatch = TokenRegex.Match(await response.Content.ReadAsStringAsync());
             if (!tokenMatch.Success)
             {
                 AuthenticationException authEx = new AuthenticationException("Failed to authenticate user. Server did not return a token.")
@@ -205,7 +203,7 @@ namespace DL444.CquSchedule.Backend.Services
                 string lecturer = string.Empty;
                 if (!string.IsNullOrEmpty(responseEntry.LecturersNotation))
                 {
-                    Match lecturerMatch = lecturerExtractionRegex.Match(responseEntry.LecturersNotation);
+                    Match lecturerMatch = LecturerExtractionRegex.Match(responseEntry.LecturersNotation);
                     if (lecturerMatch.Success)
                     {
                         lecturer = lecturerMatch.Groups[1].Value;
@@ -375,7 +373,7 @@ namespace DL444.CquSchedule.Backend.Services
             {
                 return null;
             }
-            
+
             ReadOnlySpan<char> query = uri.Query.AsSpan();
             if (query[0] != '?')
             {
@@ -385,7 +383,7 @@ namespace DL444.CquSchedule.Backend.Services
 
             foreach (var range in query.Split('&'))
             {
-ReadOnlySpan<char> part = query[range];
+                ReadOnlySpan<char> part = query[range];
                 int separatorIndex = part.IndexOf('=');
                 if (separatorIndex < 0)
                 {
@@ -401,16 +399,14 @@ ReadOnlySpan<char> part = query[range];
 
         private static SigninInfo GetSigninInfo(string html)
         {
-            Regex regex = new Regex("p id=\"login-page-flowkey\">(.*?)<");
-            Match match = regex.Match(html);
+            Match match = ExecutionRegex.Match(html);
             if (!match.Success)
             {
                 throw new ArgumentException("Supplied HTML is not valid. Execution not found.");
             }
             string exec = match.Groups[1].Value;
 
-            regex = new Regex("p id=\"login-croypto\">(.*?)<");
-            match = regex.Match(html);
+            match = CryptoRegex.Match(html);
             if (!match.Success)
             {
                 throw new ArgumentException("Supplied HTML is not valid. Crypto not found.");
@@ -434,7 +430,7 @@ ReadOnlySpan<char> part = query[range];
             {
                 return null;
             }
-            Match match = roomSimplifyRegex.Match(room);
+            Match match = RoomSimplifyRegex.Match(room);
             return match.Success ? match.Groups[2].Value : room;
         }
 
@@ -447,12 +443,28 @@ ReadOnlySpan<char> part = query[range];
         private readonly HttpClient httpClient;
         private readonly IUpstreamCredentialEncryptionService encryptionService;
         private readonly int vacationServeDays;
-        private static readonly Regex lecturerExtractionRegex = new Regex("(.*?)-\\d");
-        private static readonly Regex roomSimplifyRegex = new Regex("(室|机房|中心|分析系统|创新设计|展示与分析).*?-(.*?)$");
         private static readonly string[] expClassTypes = new[] { "上机", "实验" };
+
+        [GeneratedRegex("<div.*id=\"login-error-msg\">\\n\\s*?<span>(.*?)</span>", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex ErrorRegex { get; }
+
+        [GeneratedRegex("\"access_token\":\"(.*?)\"", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex TokenRegex { get; }
+
+        [GeneratedRegex("p id=\"login-page-flowkey\">(.*?)<", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex ExecutionRegex { get; }
+
+        [GeneratedRegex("p id=\"login-croypto\">(.*?)<", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex CryptoRegex { get; }
+
+        [GeneratedRegex("(.*?)-\\d", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex LecturerExtractionRegex { get; }
+
+        [GeneratedRegex("(室|机房|中心|分析系统|创新设计|展示与分析).*?-(.*?)$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex RoomSimplifyRegex { get; }
     }
 
-    internal sealed class PostgraduateScheduleService : IScheduleService
+    internal sealed partial class PostgraduateScheduleService : IScheduleService
     {
         public PostgraduateScheduleService(HttpClient httpClient) => this.httpClient = httpClient;
 
@@ -483,8 +495,7 @@ ReadOnlySpan<char> part = query[range];
             }
 
             string body = await response.Content.ReadAsStringAsync();
-            Regex resultRegex = new Regex("url=(.*?)\\.jsp");
-            Match match = resultRegex.Match(body);
+            Match match = ResultRegex.Match(body);
             AuthenticationResult authResult;
             string exceptionMsg;
             if (!match.Success)
@@ -524,8 +535,7 @@ ReadOnlySpan<char> part = query[range];
             request = new HttpRequestMessage(HttpMethod.Get, "http://mis.cqu.edu.cn/mis/menu_student.jsp");
             response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
             body = await response.Content.ReadAsStringAsync();
-            Regex studentSerialRegex = new Regex("stuSerial=(.*?)\"");
-            match = studentSerialRegex.Match(body);
+            match = StudentSerialRegex.Match(body);
             if (!match.Success)
             {
                 AuthenticationException authEx = new AuthenticationException("Failed to authenticate user. Server did not return a student serial.")
@@ -571,14 +581,12 @@ ReadOnlySpan<char> part = query[range];
             HttpResponseMessage response = await httpClient.SendRequestFollowingRedirectsAsync(request, cookieContainer);
             string body = await response.Content.ReadAsStringAsync();
 
-            Regex scheduleSlotRegex = new Regex("<td class=mode5>(<font color='red'>)?(.*?)(</font>)?</td>");
-            MatchCollection scheduleSlotMatches = scheduleSlotRegex.Matches(body);
+            MatchCollection scheduleSlotMatches = ScheduleSlotRegex.Matches(body);
             if (scheduleSlotMatches.Count != 7 * 5)
             {
                 throw new UpstreamRequestException($"Upstream server returned unexpected number of schedule slots. Expect 35, actually {scheduleSlotMatches.Count}.");
             }
 
-            Regex scheduleItemRegex = new Regex("名称：(.*?)<br>周次：(.*?)周<br>节次：(.*?)<br>教师：(.*?)<br>(?:教室：(.*?)<br>)?(?:平台：(.*?)<br>)?.*<br>");
             Schedule schedule = new Schedule(username);
             for (int session = 0; session < 5; session++)
             {
@@ -590,7 +598,7 @@ ReadOnlySpan<char> part = query[range];
                     {
                         continue;
                     }
-                    MatchCollection scheduleItemMatches = scheduleItemRegex.Matches(cellValue);
+                    MatchCollection scheduleItemMatches = ScheduleItemRegex.Matches(cellValue);
                     if (scheduleItemMatches.Count == 0)
                     {
                         throw new UpstreamRequestException($"Upstream server returned unexpected cell value: \"{scheduleSlotMatches.Count}\".");
@@ -649,8 +657,7 @@ ReadOnlySpan<char> part = query[range];
             {
                 return (number, number);
             }
-            Regex numberSpanRegex = new Regex("^(\\d.*)-(\\d.*)$");
-            Match match = numberSpanRegex.Match(numberSpanNotation);
+            Match match = NumberSpanRegex.Match(numberSpanNotation);
             if (!match.Success)
             {
                 throw new ArgumentException($"Supplied string is not a valid number span notation: \"{numberSpanNotation}\"");
@@ -659,5 +666,20 @@ ReadOnlySpan<char> part = query[range];
         }
 
         private readonly HttpClient httpClient;
+
+        [GeneratedRegex("url=(.*?)\\.jsp", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex ResultRegex { get; }
+
+        [GeneratedRegex("stuSerial=(.*?)\"", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex StudentSerialRegex { get; }
+
+        [GeneratedRegex("<td class=mode5>(<font color='red'>)?(.*?)(</font>)?</td>", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex ScheduleSlotRegex { get; }
+
+        [GeneratedRegex("名称：(.*?)<br>周次：(.*?)周<br>节次：(.*?)<br>教师：(.*?)<br>(?:教室：(.*?)<br>)?(?:平台：(.*?)<br>)?.*<br>", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex ScheduleItemRegex { get; }
+
+        [GeneratedRegex("^(\\d.*)-(\\d.*)$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+        private static partial Regex NumberSpanRegex { get; }
     }
 }
