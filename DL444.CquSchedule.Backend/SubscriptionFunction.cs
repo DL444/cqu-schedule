@@ -50,6 +50,8 @@ namespace DL444.CquSchedule.Backend
 
         private async Task<HttpResponseData> GetScheduleAsync(HttpRequestData req, string username, string subscriptionId, CalenderEventCategories eventCategories)
         {
+            return req.CreateStringContentResponse(HttpStatusCode.OK, calendarService.GetEmptyCalendar(), calendarContentType);
+
             ILogger log = req.FunctionContext.GetFunctionNamedLogger();
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(subscriptionId))
             {
